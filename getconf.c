@@ -46,8 +46,13 @@ const conf_var_t confstr_vars[] = {
     { "PATH", _CS_PATH },
 };
 
+const conf_var_t pathconf_vars[] = {
+    { "LINK_MAX", _PC_LINK_MAX },
+};
+
 const size_t sysconf_var_cnt = sizeof(sysconf_vars) / sizeof(conf_var_t);
 const size_t confstr_var_cnt = sizeof(confstr_vars) / sizeof(conf_var_t);
+const size_t pathconf_var_cnt = sizeof(pathconf_vars) / sizeof(conf_var_t);
 
 void err(const char *msg, ...)
 {
@@ -91,6 +96,19 @@ int print_confstr(int val)
     return 0;
 }
 
+int print_pathconf(int val, const char *path)
+{
+    long int res = pathconf(path, val);
+
+    if (res == -1) {
+        printf("undefined\n");
+    } else {
+        printf("%ld\n", res);
+    }
+    return 0;
+}
+
+
 int in_list(const conf_var_t *vars, size_t cnt, const char *var)
 {
     const conf_var_t *item = vars;
@@ -105,7 +123,7 @@ int in_list(const conf_var_t *vars, size_t cnt, const char *var)
     return -1;
 }
 
-int print_variable(const char *var)
+int print_variable(const char *var, const char *path)
 {
     if (!var)
         err("No variable");
@@ -118,6 +136,12 @@ int print_variable(const char *var)
     if (res >= 0)
         return print_confstr(res);
 
+    if (path) {
+        res = in_list(pathconf_vars, pathconf_var_cnt, var);
+        if (res >= 0)
+            return print_pathconf(res, path);
+    }
+
     err("Unrecognized variable: '%s'\n", var);
     return 1;
 }
@@ -125,10 +149,13 @@ int print_variable(const char *var)
 int main(int argc, const char **argv)
 {
     const char *varname;
+    const char *pathname;
 
     if (argc <= 1)
         err("Usage: %s variable_name\n", argv[0]);
 
     varname = argv[1];
-    return print_variable(varname);
+    pathname = argc >= 3 ? argv[2] : NULL;
+
+    return print_variable(varname, pathname);
 }
