@@ -7,10 +7,10 @@
 typedef struct {
     const char *name;
     int key;
-} sysconf_var_t;
+} conf_var_t;
 
 /* Variables from man sysconf */
-const sysconf_var_t sysconf_vars[] = {
+const conf_var_t sysconf_vars[] = {
     /* POSIX.1 */
     { "ARG_MAX", _SC_ARG_MAX },
     { "CHILD_MAX", _SC_CHILD_MAX },
@@ -42,6 +42,13 @@ const sysconf_var_t sysconf_vars[] = {
     { "POSIX2_SW_DEV", _SC_2_SW_DEV },
 };
 
+const conf_var_t confstr_vars[] = {
+    { "PATH", _CS_PATH },
+};
+
+const size_t sysconf_var_cnt = sizeof(sysconf_vars) / sizeof(conf_var_t);
+const size_t confstr_var_cnt = sizeof(confstr_vars) / sizeof(conf_var_t);
+
 void err(const char *msg, ...)
 {
     va_list args;
@@ -53,7 +60,7 @@ void err(const char *msg, ...)
     exit(1);
 }
 
-void print_sysconf(int val)
+int print_sysconf(int val)
 {
     long int res = sysconf(val);
 
@@ -62,23 +69,54 @@ void print_sysconf(int val)
     } else {
         printf("%ld\n", res);
     }
+    return 0;
+}
+
+int print_confstr(int val)
+{
+    size_t len = confstr(val, NULL, 0);
+    char *res;
+
+    if (len == 0) {
+        printf("undefined\n");
+        return 0;
+    }
+
+    res = calloc(1, len + 1);
+    if (!res)
+        err("Out of memory");
+    confstr(val, res, len);
+    printf("%s\n", res);
+    free(res);
+    return 0;
+}
+
+int in_list(const conf_var_t *vars, size_t cnt, const char *var)
+{
+    const conf_var_t *item = vars;
+    const conf_var_t *max_item = vars + cnt;
+
+    for (; item < max_item; item++) {
+        if (item->name && strcmp(item->name, var) == 0) {
+            return item->key;
+        }
+    }
+
+    return -1;
 }
 
 int print_variable(const char *var)
 {
-    size_t items = sizeof(sysconf_vars) / sizeof(sysconf_var_t);
-    const sysconf_var_t *item = sysconf_vars;
-    const sysconf_var_t *max_item = item + items;
-
     if (!var)
         err("No variable");
 
-    for (; item < max_item; item++) {
-        if (strcmp(item->name, var) == 0) {
-            print_sysconf(item->key);
-            return 0;
-        }
-    }
+    int res = in_list(sysconf_vars, sysconf_var_cnt, var);
+    if (res >= 0)
+        return print_sysconf(res);
+
+    res = in_list(confstr_vars, confstr_var_cnt, var);
+    if (res >= 0)
+        return print_confstr(res);
 
     err("Unrecognized variable: '%s'\n", var);
     return 1;
@@ -88,9 +126,8 @@ int main(int argc, const char **argv)
 {
     const char *varname;
 
-    if (argc <= 1) {
+    if (argc <= 1)
         err("Usage: %s variable_name\n", argv[0]);
-    }
 
     varname = argv[1];
     return print_variable(varname);
