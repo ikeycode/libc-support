@@ -46,8 +46,17 @@ const conf_var_t confstr_vars[] = {
     { "PATH", _CS_PATH },
 };
 
+/* Variables from man pathconf */
 const conf_var_t pathconf_vars[] = {
     { "LINK_MAX", _PC_LINK_MAX },
+    { "MAX_CANON", _PC_MAX_CANON },
+    { "MAX_INPUT", _PC_MAX_INPUT },
+    { "NAME_MAX", _PC_NAME_MAX },
+    { "PATH_MAX", _PC_PATH_MAX },
+    { "PIPE_BUF", _PC_PIPE_BUF },
+    { "CHOWN_RESTRICTED", _PC_CHOWN_RESTRICTED },
+    { "NO_TRUNC", _PC_NO_TRUNC },
+    { "VDISABLE", _PC_VDISABLE },
 };
 
 const size_t sysconf_var_cnt = sizeof(sysconf_vars) / sizeof(conf_var_t);
