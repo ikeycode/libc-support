@@ -158,9 +158,40 @@ int print_variable(const char *var, const char *path)
     return 1;
 }
 
+void pad_to(int cnt)
+{
+    while (cnt--)
+        fputc(' ', stdout);
+}
+
+int print_all(const char *path)
+{
+    const conf_var_t *item;
+    int align_to = 25;
+
+    for (item = sysconf_vars; item < sysconf_vars + sysconf_var_cnt; item++) {
+        printf("%s", item->name);
+        pad_to(align_to - strlen(item->name));
+        print_sysconf(item->key);
+    }
+    for (item = confstr_vars; item < confstr_vars + confstr_var_cnt; item++) {
+        printf("%s", item->name);
+        pad_to(align_to - strlen(item->name));
+        print_confstr(item->key);
+    }
+    for (item = pathconf_vars; item < pathconf_vars + pathconf_var_cnt; item++) {
+        printf("%s", item->name);
+        pad_to(align_to - strlen(item->name));
+        print_pathconf(item->key, path ? path : ".");
+    }
+
+    return 0;
+}
+
 void usage(const char *name)
 {
-    fprintf(stderr, "Usage: %s [-v specification] variable_name\n", name);
+    fprintf(stderr, "Usage: %s [-v specification] variable_name [path]\n", name);
+    fprintf(stderr, "       %s -a path\n", name);
     exit(1);
 }
 
@@ -169,19 +200,22 @@ int main(int argc, const char **argv)
     const char *varname = NULL;
     const char *pathname = NULL;
     const char *spec = NULL;
+    int all = 0;
     int index;
 
     if (argc <= 1)
         usage(argv[0]);
 
     for (index = 1; index < argc; index++) {
-        if (strcmp("-v", argv[index]) == 0) {
+        if (strcmp("-a", argv[index]) == 0) {
+            all = 1;
+        } else if (strcmp("-v", argv[index]) == 0) {
             index++;
             if (index >= argc)
                 usage(argv[0]);
             else
                 spec = argv[index];
-        } else if (!varname) {
+        } else if (!all && !varname) {
             varname = argv[index];
         } else if (!pathname) {
             pathname = argv[index];
@@ -192,5 +226,8 @@ int main(int argc, const char **argv)
     /* For now just ignore */
     (void)spec;
 
-    return print_variable(varname, pathname);
+    if (all)
+        return print_all(pathname);
+    else
+        return print_variable(varname, pathname);
 }

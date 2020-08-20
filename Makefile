@@ -1,4 +1,4 @@
-CFLAGS = -pedantic -Wall -Werror
+CFLAGS := -pedantic -Wall -Werror -O3
 
 all: getconf
 
