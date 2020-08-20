@@ -53,6 +53,17 @@ void err(const char *msg, ...)
     exit(1);
 }
 
+void print_sysconf(int val)
+{
+    long int res = sysconf(val);
+
+    if (res == -1) {
+        printf("undefined\n");
+    } else {
+        printf("%ld\n", res);
+    }
+}
+
 int print_variable(const char *var)
 {
     size_t items = sizeof(sysconf_vars) / sizeof(sysconf_var_t);
@@ -60,11 +71,11 @@ int print_variable(const char *var)
     const sysconf_var_t *max_item = item + items;
 
     if (!var)
-        return 1;
+        err("No variable");
 
     for (; item < max_item; item++) {
         if (strcmp(item->name, var) == 0) {
-            printf("%ld\n", sysconf(item->key));
+            print_sysconf(item->key);
             return 0;
         }
     }
