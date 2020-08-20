@@ -123,6 +123,9 @@ int in_list(const conf_var_t *vars, size_t cnt, const char *var)
     const conf_var_t *item = vars;
     const conf_var_t *max_item = vars + cnt;
 
+    if (!var)
+        return -1;
+
     for (; item < max_item; item++) {
         if (item->name && strcmp(item->name, var) == 0) {
             return item->key;
@@ -135,7 +138,7 @@ int in_list(const conf_var_t *vars, size_t cnt, const char *var)
 int print_variable(const char *var, const char *path)
 {
     if (!var)
-        err("No variable");
+        err("No variable\n");
 
     int res = in_list(sysconf_vars, sysconf_var_cnt, var);
     if (res >= 0)
@@ -155,16 +158,39 @@ int print_variable(const char *var, const char *path)
     return 1;
 }
 
+void usage(const char *name)
+{
+    fprintf(stderr, "Usage: %s [-v specification] variable_name\n", name);
+    exit(1);
+}
+
 int main(int argc, const char **argv)
 {
-    const char *varname;
-    const char *pathname;
+    const char *varname = NULL;
+    const char *pathname = NULL;
+    const char *spec = NULL;
+    int index;
 
     if (argc <= 1)
-        err("Usage: %s variable_name\n", argv[0]);
+        usage(argv[0]);
 
-    varname = argv[1];
-    pathname = argc >= 3 ? argv[2] : NULL;
+    for (index = 1; index < argc; index++) {
+        if (strcmp("-v", argv[index]) == 0) {
+            index++;
+            if (index >= argc)
+                usage(argv[0]);
+            else
+                spec = argv[index];
+        } else if (!varname) {
+            varname = argv[index];
+        } else if (!pathname) {
+            pathname = argv[index];
+        } else
+            err("Invalid argument: %s\n", argv[index]);
+    }
+
+    /* For now just ignore */
+    (void)spec;
 
     return print_variable(varname, pathname);
 }
