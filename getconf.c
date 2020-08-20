@@ -11,6 +11,7 @@ typedef struct {
 
 const sysconf_var_t sysconf_vars[] = {
     { "ARG_MAX", _SC_ARG_MAX },
+    { "CHILD_MAX", _SC_CHILD_MAX },
 };
 
 void err(const char *msg, ...)
@@ -26,11 +27,18 @@ void err(const char *msg, ...)
 
 int print_variable(const char *var)
 {
+    size_t items = sizeof(sysconf_vars) / sizeof(sysconf_var_t);
     const sysconf_var_t *item = sysconf_vars;
+    const sysconf_var_t *max_item = item + items;
 
-    if (strcmp(item->name, var) == 0) {
-        printf("%ld\n", sysconf(item->key));
-        return 0;
+    if (!var)
+        return 1;
+
+    for (; item < max_item; item++) {
+        if (strcmp(item->name, var) == 0) {
+            printf("%ld\n", sysconf(item->key));
+            return 0;
+        }
     }
 
     err("Unrecognized variable: '%s'\n", var);
