@@ -215,10 +215,20 @@ int print_all(const char *path)
     return 0;
 }
 
-void usage(const char *name)
+void usage(const char *name, int full_help)
 {
-    fprintf(stderr, "Usage: %s [-v specification] variable_name [path]\n", name);
-    fprintf(stderr, "       %s -a path\n", name);
+    fprintf(stderr, "Usage: %s [-v specification] variable [path]\n", name);
+    fprintf(stderr, "       %s -a [path]\n", name);
+
+    if (full_help) {
+        fprintf(stderr, "\nArguments:\n");
+        fprintf(stderr, "  -a           Display all configuration variables and their values\n");
+        fprintf(stderr, "  -v spec      Indicate the specification and version to obtain configuration\n");
+        fprintf(stderr, "               variable for\n");
+        fprintf(stderr, "  variable     The variable name to get value for\n");
+        fprintf(stderr, "  path         File system path to get pathconf(3) variable from\n");
+    }
+
     exit(1);
 }
 
@@ -231,15 +241,18 @@ int main(int argc, const char **argv)
     int index;
 
     if (argc <= 1)
-        usage(argv[0]);
+        usage(argv[0], 0);
 
     for (index = 1; index < argc; index++) {
         if (strcmp("-a", argv[index]) == 0)
             all = 1;
+        else if (strcmp("-h", argv[index]) == 0 ||
+                strcmp("--help", argv[index]) == 0)
+            usage(argv[0], 1);
         else if (strcmp("-v", argv[index]) == 0) {
             index++;
             if (index >= argc)
-                usage(argv[0]);
+                usage(argv[0], 0);
             else
                 spec = argv[index];
         } else if (!all && !varname)
