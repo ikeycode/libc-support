@@ -117,7 +117,7 @@ static int print_confstr(int val)
     /*@-nullpass@*/
     size_t len = confstr(val, NULL, 0);
     /*@=nullpass@*/
-    char *res;
+    char *res = NULL;
 
     if (len == 0) {
         printf("undefined\n");
@@ -138,7 +138,7 @@ static int print_confstr(int val)
 
 static int print_pathconf(int val, /*@null@*/ const char *path)
 {
-    long res;
+    long res = 0;
 
     if (path == NULL)
         return 0;
@@ -154,8 +154,8 @@ static int print_pathconf(int val, /*@null@*/ const char *path)
 
 static int in_list(const conf_var_t *vars, size_t cnt, /*@null@*/ const char *var)
 {
-    const conf_var_t *item;
     const conf_var_t *max_item = vars + cnt;
+    const conf_var_t *item = NULL;
 
     if (var == NULL || vars == NULL)
         return -1;
@@ -170,7 +170,7 @@ static int in_list(const conf_var_t *vars, size_t cnt, /*@null@*/ const char *va
 
 static int print_variable(/*@null@*/ const char *var, /*@null@*/ const char *path)
 {
-    int res;
+    int res = 0;
 
     if (var == NULL)
         err("No variable\n");
@@ -198,7 +198,7 @@ static int print_variable(/*@null@*/ const char *var, /*@null@*/ const char *pat
 
 static void print_aligned_to(const char *msg, long align_to)
 {
-    long cnt;
+    long cnt = 0;
 
     if (msg == NULL)
         return;
@@ -216,7 +216,7 @@ static void print_aligned_to(const char *msg, long align_to)
 
 static int print_all(/*@null@*/ const char *path)
 {
-    const conf_var_t *item;
+    const conf_var_t *item = NULL;
 
     for (item = sysconf_vars; item < sysconf_vars + sysconf_var_cnt; item++) {
         print_aligned_to(item->name, text_align_to_chars);
@@ -256,7 +256,7 @@ int main(int argc, const char **argv)
     const char *varname = NULL;
     const char *pathname = NULL;
     int all = 0;
-    int index;
+    int index = 1;
 
     if (argc <= 1)
         usage(argv[0], HELP_SHORT);
