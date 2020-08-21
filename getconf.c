@@ -78,7 +78,7 @@ static const size_t sysconf_var_cnt = sizeof(sysconf_vars) / sizeof(conf_var_t);
 static const size_t confstr_var_cnt = sizeof(confstr_vars) / sizeof(conf_var_t);
 static const size_t pathconf_var_cnt = sizeof(pathconf_vars) / sizeof(conf_var_t);
 
-static const int text_align_to_chars = 25;
+static const long text_align_to_chars = 25;
 
 enum {
     HELP_SHORT,
@@ -136,10 +136,14 @@ static int print_confstr(int val)
     return 0;
 }
 
-static int print_pathconf(int val, const char *path)
+static int print_pathconf(int val, /*@null@*/ const char *path)
 {
-    long res = pathconf(path, val);
+    long res;
 
+    if (path == NULL)
+        return 0;
+
+    res  = pathconf(path, val);
     if (res == -1)
         printf("undefined\n");
     else
@@ -192,7 +196,7 @@ static int print_variable(/*@null@*/ const char *var, /*@null@*/ const char *pat
     return 1;
 }
 
-static void print_aligned_to(const char *msg, int align_to)
+static void print_aligned_to(const char *msg, long align_to)
 {
     long cnt;
 
@@ -224,9 +228,7 @@ static int print_all(/*@null@*/ const char *path)
     }
     for (item = pathconf_vars; item < pathconf_vars + pathconf_var_cnt; item++) {
         print_aligned_to(item->name, text_align_to_chars);
-        /*@-nullpass@*/
         (void)print_pathconf(item->key, path != NULL ? path : ".");
-        /*@=nullpass@*/
     }
 
     return 0;
@@ -269,11 +271,7 @@ int main(int argc, const char **argv)
             index++;
             if (index >= argc)
                 usage(argv[0], HELP_SHORT);
-#if 0
-            /* Ignored for now */
-            else
-                spec = argv[index];
-#endif
+            /* Value ignored for now */
         } else if (all == 0 && varname == NULL)
             varname = argv[index];
         else if (pathname == NULL)
