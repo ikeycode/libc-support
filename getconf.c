@@ -9,7 +9,7 @@ typedef struct {
     int key;
 } conf_var_t;
 
-const conf_var_t sysconf_vars[] = {
+static const conf_var_t sysconf_vars[] = {
     /* POSIX.1 variables from man sysconf */
     { "ARG_MAX", _SC_ARG_MAX },
     { "CHILD_MAX", _SC_CHILD_MAX },
@@ -57,12 +57,12 @@ const conf_var_t sysconf_vars[] = {
     { "IOV_MAX", _SC_IOV_MAX },
 };
 
-const conf_var_t confstr_vars[] = {
+static const conf_var_t confstr_vars[] = {
     { "PATH", _CS_PATH },
 };
 
 /* Variables from man pathconf */
-const conf_var_t pathconf_vars[] = {
+static const conf_var_t pathconf_vars[] = {
     { "LINK_MAX", _PC_LINK_MAX },
     { "MAX_CANON", _PC_MAX_CANON },
     { "MAX_INPUT", _PC_MAX_INPUT },
@@ -80,7 +80,7 @@ const size_t pathconf_var_cnt = sizeof(pathconf_vars) / sizeof(conf_var_t);
 
 const int text_align_to_chars = 25;
 
-void err(const char *msg, ...)
+static void err(const char *msg, ...)
 {
     va_list args;
 
@@ -91,7 +91,7 @@ void err(const char *msg, ...)
     exit(1);
 }
 
-int print_sysconf(int val)
+static int print_sysconf(int val)
 {
     long res = sysconf(val);
 
@@ -105,7 +105,7 @@ int print_sysconf(int val)
     return 0;
 }
 
-int print_confstr(int val)
+static int print_confstr(int val)
 {
     size_t len = confstr(val, NULL, 0);
     char *res;
@@ -125,7 +125,7 @@ int print_confstr(int val)
     return 0;
 }
 
-int print_pathconf(int val, const char *path)
+static int print_pathconf(int val, const char *path)
 {
     long int res = pathconf(path, val);
 
@@ -137,7 +137,7 @@ int print_pathconf(int val, const char *path)
     return 0;
 }
 
-int in_list(const conf_var_t *vars, size_t cnt, const char *var)
+static int in_list(const conf_var_t *vars, size_t cnt, const char *var)
 {
     const conf_var_t *item;
     const conf_var_t *max_item = vars + cnt;
@@ -153,7 +153,7 @@ int in_list(const conf_var_t *vars, size_t cnt, const char *var)
     return -1;
 }
 
-int print_variable(const char *var, const char *path)
+static int print_variable(const char *var, const char *path)
 {
     int res;
 
@@ -179,7 +179,7 @@ int print_variable(const char *var, const char *path)
     return 1;
 }
 
-void print_aligned_to(const char *msg, int align_to)
+static void print_aligned_to(const char *msg, int align_to)
 {
     int cnt;
 
@@ -195,7 +195,7 @@ void print_aligned_to(const char *msg, int align_to)
         fputc(' ', stdout);
 }
 
-int print_all(const char *path)
+static int print_all(const char *path)
 {
     const conf_var_t *item;
 
@@ -215,7 +215,7 @@ int print_all(const char *path)
     return 0;
 }
 
-void usage(const char *name, int full_help)
+static void usage(const char *name, int full_help)
 {
     fprintf(stderr, "Usage: %s [-v specification] variable [path]\n", name);
     fprintf(stderr, "       %s -a [path]\n", name);
