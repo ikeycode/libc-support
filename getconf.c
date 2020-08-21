@@ -155,10 +155,12 @@ int in_list(const conf_var_t *vars, size_t cnt, const char *var)
 
 int print_variable(const char *var, const char *path)
 {
+    int res;
+
     if (!var)
         err("No variable\n");
 
-    int res = in_list(sysconf_vars, sysconf_var_cnt, var);
+    res = in_list(sysconf_vars, sysconf_var_cnt, var);
     if (res != - 1)
         return print_sysconf(res);
 
@@ -173,6 +175,7 @@ int print_variable(const char *var, const char *path)
     }
 
     err("Unrecognized variable: '%s'\n", var);
+
     return 1;
 }
 
@@ -249,9 +252,8 @@ int main(int argc, const char **argv)
 
     /* For now just ignore */
     (void)spec;
-
     if (all)
         return print_all(pathname);
-    else
-        return print_variable(varname, pathname);
+
+    return print_variable(varname, pathname);
 }
