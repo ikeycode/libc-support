@@ -7,13 +7,16 @@ getconf: getconf.o
 
 getconf.o: getconf.c
 
-check: scan splint
+check: scan splint sparse
 
 scan:
-	$(SCAN_BUILD) make
+	@$(SCAN_BUILD) make
 
 splint:
-	splint +posixlib *.c
+	@splint +posixlib *.c
+
+sparse:
+	@sparse *.c
 
 clean:
 	rm -f *.o getconf
