@@ -78,6 +78,8 @@ const size_t sysconf_var_cnt = sizeof(sysconf_vars) / sizeof(conf_var_t);
 const size_t confstr_var_cnt = sizeof(confstr_vars) / sizeof(conf_var_t);
 const size_t pathconf_var_cnt = sizeof(pathconf_vars) / sizeof(conf_var_t);
 
+const int text_align_to_chars = 25;
+
 void err(const char *msg, ...)
 {
     va_list args;
@@ -119,6 +121,7 @@ int print_confstr(int val)
     confstr(val, res, len);
     printf("%s\n", res);
     free(res);
+
     return 0;
 }
 
@@ -126,27 +129,25 @@ int print_pathconf(int val, const char *path)
 {
     long int res = pathconf(path, val);
 
-    if (res == -1) {
+    if (res == -1)
         printf("undefined\n");
-    } else {
+    else
         printf("%ld\n", res);
-    }
+
     return 0;
 }
 
-
 int in_list(const conf_var_t *vars, size_t cnt, const char *var)
 {
-    const conf_var_t *item = vars;
+    const conf_var_t *item;
     const conf_var_t *max_item = vars + cnt;
 
-    if (!var)
+    if (!var || !vars)
         return -1;
 
-    for (; item < max_item; item++) {
-        if (item->name && strcmp(item->name, var) == 0) {
+    for (item = vars; item < max_item; item++) {
+        if (item->name && strcmp(item->name, var) == 0)
             return item->key;
-        }
     }
 
     return -1;
@@ -158,16 +159,16 @@ int print_variable(const char *var, const char *path)
         err("No variable\n");
 
     int res = in_list(sysconf_vars, sysconf_var_cnt, var);
-    if (res >= 0)
+    if (res != - 1)
         return print_sysconf(res);
 
     res = in_list(confstr_vars, confstr_var_cnt, var);
-    if (res >= 0)
+    if (res != -1)
         return print_confstr(res);
 
     if (path) {
         res = in_list(pathconf_vars, pathconf_var_cnt, var);
-        if (res >= 0)
+        if (res != -1)
             return print_pathconf(res, path);
     }
 
@@ -175,8 +176,11 @@ int print_variable(const char *var, const char *path)
     return 1;
 }
 
-void pad_to(int cnt)
+void align_to(int cnt)
 {
+    if (cnt <= 0)
+        return;
+
     while (cnt--)
         fputc(' ', stdout);
 }
@@ -184,21 +188,20 @@ void pad_to(int cnt)
 int print_all(const char *path)
 {
     const conf_var_t *item;
-    int align_to = 25;
 
     for (item = sysconf_vars; item < sysconf_vars + sysconf_var_cnt; item++) {
         printf("%s", item->name);
-        pad_to(align_to - strlen(item->name));
+        align_to(text_align_to_chars - strlen(item->name));
         print_sysconf(item->key);
     }
     for (item = confstr_vars; item < confstr_vars + confstr_var_cnt; item++) {
         printf("%s", item->name);
-        pad_to(align_to - strlen(item->name));
+        align_to(text_align_to_chars - strlen(item->name));
         print_confstr(item->key);
     }
     for (item = pathconf_vars; item < pathconf_vars + pathconf_var_cnt; item++) {
         printf("%s", item->name);
-        pad_to(align_to - strlen(item->name));
+        align_to(text_align_to_chars - strlen(item->name));
         print_pathconf(item->key, path ? path : ".");
     }
 
