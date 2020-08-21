@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
+#include <unistd.h>
 
 typedef struct {
     const char *name;
@@ -79,6 +79,7 @@ static const size_t confstr_var_cnt = sizeof(confstr_vars) / sizeof(conf_var_t);
 static const size_t pathconf_var_cnt = sizeof(pathconf_vars) / sizeof(conf_var_t);
 
 static const long text_align_to_chars = 25;
+static const int NOT_IN_LIST = -1;
 
 enum {
     HELP_SHORT,
@@ -143,7 +144,7 @@ static int print_pathconf(int val, /*@null@*/ const char *path)
     if (path == NULL)
         return 0;
 
-    res  = pathconf(path, val);
+    res = pathconf(path, val);
     if (res == -1)
         printf("undefined\n");
     else
@@ -158,14 +159,14 @@ static int in_list(const conf_var_t *vars, size_t cnt, /*@null@*/ const char *va
     const conf_var_t *item = NULL;
 
     if (var == NULL || vars == NULL)
-        return -1;
+        return NOT_IN_LIST;
 
     for (item = vars; item < max_item; item++) {
         if (item->name != NULL && strcmp(item->name, var) == 0)
             return item->key;
     }
 
-    return -1;
+    return NOT_IN_LIST;
 }
 
 static int print_variable(/*@null@*/ const char *var, /*@null@*/ const char *path)
@@ -176,16 +177,16 @@ static int print_variable(/*@null@*/ const char *var, /*@null@*/ const char *pat
         err("No variable\n");
 
     res = in_list(sysconf_vars, sysconf_var_cnt, var);
-    if (res != - 1)
+    if (res != NOT_IN_LIST)
         return print_sysconf(res);
 
     res = in_list(confstr_vars, confstr_var_cnt, var);
-    if (res != -1)
+    if (res != NOT_IN_LIST)
         return print_confstr(res);
 
     if (path != NULL) {
         res = in_list(pathconf_vars, pathconf_var_cnt, var);
-        if (res != -1)
+        if (res != NOT_IN_LIST)
             return print_pathconf(res, path);
     }
 
