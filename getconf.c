@@ -9,9 +9,8 @@ typedef struct {
     int key;
 } conf_var_t;
 
-/* Variables from man sysconf */
 const conf_var_t sysconf_vars[] = {
-    /* POSIX.1 */
+    /* POSIX.1 variables from man sysconf */
     { "ARG_MAX", _SC_ARG_MAX },
     { "CHILD_MAX", _SC_CHILD_MAX },
     { "HOST_NAME_MAX", _SC_HOST_NAME_MAX },
@@ -26,7 +25,7 @@ const conf_var_t sysconf_vars[] = {
     { "TZNAME_MAX", _SC_TZNAME_MAX },
     { "_POSIX_VERSION", _SC_VERSION },
 
-    /* POSIX.2 */
+    /* POSIX.2 variables from man sysconf */
     { "BC_BASE_MAX", _SC_BC_BASE_MAX },
     { "BC_DIM_MAX", _SC_BC_DIM_MAX },
     { "BC_SCALE_MAX", _SC_BC_SCALE_MAX },
@@ -40,6 +39,22 @@ const conf_var_t sysconf_vars[] = {
     { "POSIX2_FORT_RUN", _SC_2_FORT_RUN },
     { "_POSIX2_LOCALEDEF", _SC_2_LOCALEDEF },
     { "POSIX2_SW_DEV", _SC_2_SW_DEV },
+
+    /* Others spotted from "getconf -a" list */
+    { "ATEXIT_MAX", _SC_ATEXIT_MAX },
+    { "CHAR_BIT", _SC_CHAR_BIT },
+    { "CHAR_MIN", _SC_CHAR_MIN },
+    { "CHAR_MAX", _SC_CHAR_MAX },
+    { "SHRT_MIN", _SC_SHRT_MIN },
+    { "SHRT_MAX", _SC_SHRT_MAX },
+    { "INT_MIN", _SC_INT_MIN },
+    { "INT_MAX", _SC_INT_MAX },
+    { "UCHAR_MAX", _SC_UCHAR_MAX },
+    { "USHRT_MAX", _SC_USHRT_MAX },
+    { "UINT_MAX", _SC_UINT_MAX },
+    { "ULONG_MAX", _SC_ULONG_MAX },
+    { "WORD_BIT", _SC_WORD_BIT },
+    { "IOV_MAX", _SC_IOV_MAX },
 };
 
 const conf_var_t confstr_vars[] = {
@@ -76,13 +91,15 @@ void err(const char *msg, ...)
 
 int print_sysconf(int val)
 {
-    long int res = sysconf(val);
+    long res = sysconf(val);
 
-    if (res == -1) {
+    if (val == _SC_ULONG_MAX)
+        printf("%lu\n", (unsigned long)res);
+    else if (res == -1)
         printf("undefined\n");
-    } else {
+    else
         printf("%ld\n", res);
-    }
+
     return 0;
 }
 
