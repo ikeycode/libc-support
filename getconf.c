@@ -74,21 +74,28 @@ static const conf_var_t pathconf_vars[] = {
     { "VDISABLE", _PC_VDISABLE },
 };
 
-const size_t sysconf_var_cnt = sizeof(sysconf_vars) / sizeof(conf_var_t);
-const size_t confstr_var_cnt = sizeof(confstr_vars) / sizeof(conf_var_t);
-const size_t pathconf_var_cnt = sizeof(pathconf_vars) / sizeof(conf_var_t);
+static const size_t sysconf_var_cnt = sizeof(sysconf_vars) / sizeof(conf_var_t);
+static const size_t confstr_var_cnt = sizeof(confstr_vars) / sizeof(conf_var_t);
+static const size_t pathconf_var_cnt = sizeof(pathconf_vars) / sizeof(conf_var_t);
 
-const int text_align_to_chars = 25;
+static const int text_align_to_chars = 25;
+
+enum {
+    HELP_SHORT,
+    HELP_FULL
+};
 
 static void err(const char *msg, ...)
 {
     va_list args;
 
+    /*@-nullpass@*/
     va_start(args, msg);
-    vfprintf(stderr, msg, args);
+    (void)vfprintf(stderr, msg, args);
     va_end(args);
+    /*@=nullpass@*/
 
-    exit(1);
+    exit(EXIT_FAILURE);
 }
 
 static int print_sysconf(int val)
@@ -107,7 +114,9 @@ static int print_sysconf(int val)
 
 static int print_confstr(int val)
 {
+    /*@-nullpass@*/
     size_t len = confstr(val, NULL, 0);
+    /*@=nullpass@*/
     char *res;
 
     if (len == 0) {
@@ -116,10 +125,12 @@ static int print_confstr(int val)
     }
 
     res = calloc(1, len + 1);
-    if (!res)
+    if (res == NULL)
         err("Out of memory");
-    confstr(val, res, len);
-    printf("%s\n", res);
+    else if (confstr(val, res, len) == len)
+        printf("%s\n", res);
+    else
+        printf("undefined\n");
     free(res);
 
     return 0;
@@ -127,7 +138,7 @@ static int print_confstr(int val)
 
 static int print_pathconf(int val, const char *path)
 {
-    long int res = pathconf(path, val);
+    long res = pathconf(path, val);
 
     if (res == -1)
         printf("undefined\n");
@@ -137,27 +148,27 @@ static int print_pathconf(int val, const char *path)
     return 0;
 }
 
-static int in_list(const conf_var_t *vars, size_t cnt, const char *var)
+static int in_list(const conf_var_t *vars, size_t cnt, /*@null@*/ const char *var)
 {
     const conf_var_t *item;
     const conf_var_t *max_item = vars + cnt;
 
-    if (!var || !vars)
+    if (var == NULL || vars == NULL)
         return -1;
 
     for (item = vars; item < max_item; item++) {
-        if (item->name && strcmp(item->name, var) == 0)
+        if (item->name != NULL && strcmp(item->name, var) == 0)
             return item->key;
     }
 
     return -1;
 }
 
-static int print_variable(const char *var, const char *path)
+static int print_variable(/*@null@*/ const char *var, /*@null@*/ const char *path)
 {
     int res;
 
-    if (!var)
+    if (var == NULL)
         err("No variable\n");
 
     res = in_list(sysconf_vars, sysconf_var_cnt, var);
@@ -168,59 +179,65 @@ static int print_variable(const char *var, const char *path)
     if (res != -1)
         return print_confstr(res);
 
-    if (path) {
+    if (path != NULL) {
         res = in_list(pathconf_vars, pathconf_var_cnt, var);
         if (res != -1)
             return print_pathconf(res, path);
     }
 
+    /*@-nullpass@*/
     err("Unrecognized variable: '%s'\n", var);
+    /*@=nullpass@*/
 
     return 1;
 }
 
 static void print_aligned_to(const char *msg, int align_to)
 {
-    int cnt;
+    long cnt;
 
-    if (!msg)
+    if (msg == NULL)
         return;
 
     printf("%s ", msg);
-    cnt = align_to - strlen(msg);
+    cnt = align_to - (long)strlen(msg);
     if (cnt <= 0)
         return;
 
-    while (cnt--)
-        fputc(' ', stdout);
+    while (cnt-- > 0) {
+        if (fputc(' ', stdout) == EOF)
+            break;
+    }
 }
 
-static int print_all(const char *path)
+static int print_all(/*@null@*/ const char *path)
 {
     const conf_var_t *item;
 
     for (item = sysconf_vars; item < sysconf_vars + sysconf_var_cnt; item++) {
         print_aligned_to(item->name, text_align_to_chars);
-        print_sysconf(item->key);
+        (void)print_sysconf(item->key);
     }
     for (item = confstr_vars; item < confstr_vars + confstr_var_cnt; item++) {
         print_aligned_to(item->name, text_align_to_chars);
-        print_confstr(item->key);
+        (void)print_confstr(item->key);
     }
     for (item = pathconf_vars; item < pathconf_vars + pathconf_var_cnt; item++) {
         print_aligned_to(item->name, text_align_to_chars);
-        print_pathconf(item->key, path ? path : ".");
+        /*@-nullpass@*/
+        (void)print_pathconf(item->key, path != NULL ? path : ".");
+        /*@=nullpass@*/
     }
 
     return 0;
 }
 
-static void usage(const char *name, int full_help)
+static void usage(const char *name, int help)
 {
     fprintf(stderr, "Usage: %s [-v specification] variable [path]\n", name);
     fprintf(stderr, "       %s -a [path]\n", name);
 
-    if (full_help) {
+    if (help == HELP_FULL) {
         fprintf(stderr, "\nArguments:\n");
         fprintf(stderr, "  -a           Display all configuration variables and their values\n");
         fprintf(stderr, "  -v spec      Indicate the specification and version to obtain configuration\n");
@@ -229,43 +246,43 @@ static void usage(const char *name, int full_help)
         fprintf(stderr, "  path         File system path to get pathconf(3) variable from\n");
     }
 
-    exit(1);
+    exit(EXIT_FAILURE);
 }
 
 int main(int argc, const char **argv)
 {
     const char *varname = NULL;
     const char *pathname = NULL;
-    const char *spec = NULL;
     int all = 0;
     int index;
 
     if (argc <= 1)
-        usage(argv[0], 0);
+        usage(argv[0], HELP_SHORT);
 
     for (index = 1; index < argc; index++) {
         if (strcmp("-a", argv[index]) == 0)
             all = 1;
         else if (strcmp("-h", argv[index]) == 0 ||
                 strcmp("--help", argv[index]) == 0)
-            usage(argv[0], 1);
+            usage(argv[0], HELP_FULL);
         else if (strcmp("-v", argv[index]) == 0) {
             index++;
             if (index >= argc)
-                usage(argv[0], 0);
+                usage(argv[0], HELP_SHORT);
+#if 0
+            /* Ignored for now */
             else
                 spec = argv[index];
-        } else if (!all && !varname)
+#endif
+        } else if (all == 0 && varname == NULL)
             varname = argv[index];
-        else if (!pathname)
+        else if (pathname == NULL)
             pathname = argv[index];
         else
             err("Invalid argument: %s\n", argv[index]);
     }
 
-    /* For now just ignore */
-    (void)spec;
-    if (all)
+    if (all == 1)
         return print_all(pathname);
 
     return print_variable(varname, pathname);
