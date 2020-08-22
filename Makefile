@@ -13,7 +13,7 @@ scan:
 	@$(SCAN_BUILD) make
 
 splint:
-	@splint +posixlib *.c
+	@splint +posixlib -D__ONCE_ALIGNMENT= *.c
 
 sparse:
 	@sparse *.c

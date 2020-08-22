@@ -4,6 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#ifdef S_SPLINT_S
+/* Hack for splint parse error caused by bits/thread-shared-types.h */
+#define _THREAD_SHARED_TYPES_H
+#endif
 #include <netdb.h>
 
 static const int addr_align_to = 16;
@@ -39,13 +43,16 @@ static void usage(const char *name, int help)
     exit(EXIT_FAILURE);
 }
 
-static void print_addr(char *addr, int len, unsigned int align_to)
+static void print_addr(char *addr, int len, int align_to)
 {
     int first = 1;
     int cnt = 0;
 
     while (len-- > 0) {
-        cnt += printf("%s%hhu", first == 0 ? "." : "", *addr++);
+        /*@+charint@*/
+        cnt += printf("%s%hhu", first == 0 ? "." : "", (unsigned char)*addr);
+        /*@-charint@*/
+        addr++;
         first = 0;
     }
     while (cnt++ < align_to)
@@ -58,9 +65,11 @@ static int match_key(const char **keys, int key_cnt, char *val)
     if (keys == NULL)
         return 0;
 
-    while (key_cnt--) {
+    while (key_cnt-- > 0) {
+        /*@-unrecog@*/
         if (strcasecmp(*keys, val) == 0)
             return 1;
+        /*@=unrecog@*/
         keys++;
     }
 
@@ -73,7 +82,7 @@ static int read_hosts(/*@null@*/ const char **keys, int key_cnt)
 
     sethostent(0);
     while ((ent = gethostent()) != NULL) {
-        if (keys == NULL || match_key(keys, key_cnt, ent->h_name)) {
+        if (keys == NULL || match_key(keys, key_cnt, ent->h_name) == 1) {
             print_addr(ent->h_addr_list[0], ent->h_length, addr_align_to);
             printf("%s\n", ent->h_name);
         }
