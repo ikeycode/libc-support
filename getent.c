@@ -1,3 +1,5 @@
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stddef.h>
@@ -9,6 +11,7 @@
 #define _THREAD_SHARED_TYPES_H
 #endif
 #include <netdb.h>
+#include <arpa/inet.h>
 
 static const int addr_align_to = 16;
 
@@ -55,44 +58,74 @@ static void print_addr(char *addr, int len, int align_to)
         addr++;
         first = 0;
     }
-    while (cnt++ < align_to)
+    printf(" ");
+    while (++cnt < align_to)
         if (fputc(' ', stdout) == EOF)
             break;
 }
 
-static int match_key(const char **keys, int key_cnt, char *val)
+static int get_hosts(/*@null@*/ const char **keys, int key_cnt)
 {
     if (keys == NULL)
-        return 0;
+        return 1;
 
-    while (key_cnt-- > 0) {
-        /*@-unrecog@*/
-        if (strcasecmp(*keys, val) == 0)
-            return 1;
-        /*@=unrecog@*/
-        keys++;
+    for (; key_cnt-- > 0; keys++) {
+        struct hostent *ent = NULL;
+        char **aliases = NULL;
+        char dst6[sizeof(struct in6_addr)];
+        char dst[sizeof(struct in6_addr)];
+        /*@-compdef@*/
+        int addr6 = inet_pton(AF_INET6, *keys, dst6);
+        int addr = inet_pton(AF_INET, *keys, dst);
+        /*@=compdef@*/
+
+        if (addr == -1 && addr6 == -1)
+            continue;
+        else if (addr == 0 && addr6 == 0) {
+            ent = gethostbyname2(*keys, AF_INET6);
+            if (ent == NULL)
+                ent = gethostbyname2(*keys, AF_INET);
+        } else if (addr6 == 1) {
+            /*@-compdef@ @-type@*/
+            ent = gethostbyaddr(dst6, sizeof(struct in6_addr), AF_INET6);
+            /*@=compdef@*/
+        } else
+            /*@-compdef@*/
+            ent = gethostbyaddr(dst, sizeof(struct in_addr), AF_INET);
+            /*@=compdef@ @=type@*/
+
+        if (ent == NULL)
+            continue;
+
+        print_addr(ent->h_addr_list[0], ent->h_length, addr_align_to);
+        printf("%s", ent->h_name);
+
+        aliases = ent->h_aliases;
+        while (aliases != NULL && *aliases != NULL) {
+            printf(" %s", *aliases);
+            aliases++;
+        }
+        printf("\n");
     }
 
     return 0;
 }
 
-static int read_hosts(/*@null@*/ const char **keys, int key_cnt)
+static int get_hosts_all(void)
 {
     struct hostent *ent = NULL;
 
     sethostent(0);
     while ((ent = gethostent()) != NULL) {
-        if (keys == NULL || match_key(keys, key_cnt, ent->h_name) == 1) {
-            char **aliases = ent->h_aliases;
+        char **aliases = ent->h_aliases;
 
-            print_addr(ent->h_addr_list[0], ent->h_length, addr_align_to);
-            printf("%s", ent->h_name);
-            while (aliases != NULL && *aliases != NULL) {
-                printf(" %s", *aliases);
-                aliases++;
-            }
-            printf("\n");
+        print_addr(ent->h_addr_list[0], ent->h_length, addr_align_to);
+        printf("%s", ent->h_name);
+        while (aliases != NULL && *aliases != NULL) {
+            printf(" %s", *aliases);
+            aliases++;
         }
+        printf("\n");
     }
     endhostent();
 
@@ -101,8 +134,11 @@ static int read_hosts(/*@null@*/ const char **keys, int key_cnt)
 
 static int read_database(const char *dbase, /*@null@*/ const char **keys, int key_cnt)
 {
-    if (strcmp("hosts", dbase) == 0)
-        return read_hosts(keys, key_cnt);
+    if (strcmp("hosts", dbase) == 0) {
+        if (keys != NULL)
+            return get_hosts(keys, key_cnt);
+        return get_hosts_all();
+    }
 
     err("Unknown database: %s\n", dbase);
     return 1;
