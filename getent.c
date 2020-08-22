@@ -53,13 +53,27 @@ static void print_addr(char *addr, int len, unsigned int align_to)
             break;
 }
 
-static int read_hosts(/*@null@*/ const char *key)
+static int match_key(const char **keys, int key_cnt, char *val)
+{
+    if (keys == NULL)
+        return 0;
+
+    while (key_cnt--) {
+        if (strcasecmp(*keys, val) == 0)
+            return 1;
+        keys++;
+    }
+
+    return 0;
+}
+
+static int read_hosts(/*@null@*/ const char **keys, int key_cnt)
 {
     struct hostent *ent = NULL;
 
     sethostent(0);
     while ((ent = gethostent()) != NULL) {
-        if (key == NULL || strcasecmp(key, ent->h_name) == 0) {
+        if (keys == NULL || match_key(keys, key_cnt, ent->h_name)) {
             print_addr(ent->h_addr_list[0], ent->h_length, addr_align_to);
             printf("%s\n", ent->h_name);
         }
@@ -69,10 +83,10 @@ static int read_hosts(/*@null@*/ const char *key)
     return 0;
 }
 
-static int read_database(const char *dbase, /*@null@*/ const char *key)
+static int read_database(const char *dbase, /*@null@*/ const char **keys, int key_cnt)
 {
     if (strcmp("hosts", dbase) == 0)
-        return read_hosts(key);
+        return read_hosts(keys, key_cnt);
 
     err("Unknown database: %s\n", dbase);
     return 1;
@@ -81,7 +95,7 @@ static int read_database(const char *dbase, /*@null@*/ const char *key)
 int main(int argc, char **argv)
 {
     const char *dbase = NULL;
-    const char *key = NULL;
+    const char **keys = NULL;
     int index = 1;
 
     for (index = 1; index < argc; index++) {
@@ -89,8 +103,10 @@ int main(int argc, char **argv)
             usage(argv[0], HELP_FULL);
         else if (dbase == NULL)
             dbase = argv[index];
-        else if (key == NULL)
-            key = argv[index];
+        else if (keys == NULL) {
+            keys = (const char **)&argv[index];
+            break;
+        }
         else
             err("Unknown parameter: %s\n", argv[index]);
     }
@@ -99,6 +115,6 @@ int main(int argc, char **argv)
         usage(argv[0], HELP_SHORT);
 
     /*@-nullpass@*/
-    return read_database(dbase, key);
+    return read_database(dbase, keys, argc - index);
     /*@=nullpass@*/
 }
