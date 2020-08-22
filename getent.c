@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <netdb.h>
 
 static const int addr_align_to = 16;
@@ -58,8 +59,10 @@ static int read_hosts(/*@null@*/ const char *key)
 
     sethostent(0);
     while ((ent = gethostent()) != NULL) {
-        print_addr(ent->h_addr_list[0], ent->h_length, addr_align_to);
-        printf("%s\n", ent->h_name);
+        if (key == NULL || strcasecmp(key, ent->h_name) == 0) {
+            print_addr(ent->h_addr_list[0], ent->h_length, addr_align_to);
+            printf("%s\n", ent->h_name);
+        }
     }
     endhostent();
 
