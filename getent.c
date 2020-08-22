@@ -35,6 +35,23 @@ static void usage(const char *name, int help)
     exit(EXIT_FAILURE);
 }
 
+static int read_hosts(/*@null@*/ const char *key)
+{
+    if (key == NULL)
+        return 1;
+
+    return 0;
+}
+
+static int read_database(const char *dbase, /*@null@*/ const char *key)
+{
+    if (strcmp("hosts", dbase) == 0)
+        return read_hosts(key);
+
+    err("Unknown database: %s\n", dbase);
+    return 1;
+}
+
 int main(int argc, char **argv)
 {
     const char *dbase = NULL;
@@ -55,5 +72,7 @@ int main(int argc, char **argv)
     if (dbase == NULL)
         usage(argv[0], HELP_SHORT);
 
-    return 0;
+    /*@-nullpass@*/
+    return read_database(dbase, key);
+    /*@=nullpass@*/
 }
