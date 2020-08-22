@@ -14,6 +14,8 @@
 #include <arpa/inet.h>
 
 static const int addr_align_to = 16;
+#define DST_LEN 256
+#define HOST_LEN 256
 
 enum {
     HELP_SHORT,
@@ -64,14 +66,43 @@ static void print_addr(char *addr, int len, int align_to)
             break;
 }
 
+static void print_sockaddr(struct sockaddr *addr, int family)
+{
+    char dst[DST_LEN];
+    char host[HOST_LEN];
+
+    if (family == AF_INET) {
+        struct sockaddr_in *sin = (struct sockaddr_in *)addr;
+        printf("%s ", inet_ntop(AF_INET, (const void *)&sin->sin_addr, (char *)dst, DST_LEN));
+    } else {
+        struct sockaddr_in6 *sin = (struct sockaddr_in6 *)addr;
+        printf("%s ", inet_ntop(AF_INET6, (const void *)&sin->sin6_addr, (char *)dst, DST_LEN));
+    }
+    (void)getnameinfo(addr, family == AF_INET ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), host, HOST_LEN, NULL, 0, 0);
+    host[HOST_LEN - 1] = 0;
+    printf("%s\n", host);
+}
+
+static void print_by_host(const char *key)
+{
+    struct addrinfo *info = NULL;
+    int res = 0;
+
+    res = getaddrinfo(key, NULL, NULL, &info);
+    if (res != 0)
+        return;
+
+    print_sockaddr(info->ai_addr, info->ai_family);
+
+    freeaddrinfo(info);
+}
+
 static int get_hosts(/*@null@*/ const char **keys, int key_cnt)
 {
     if (keys == NULL)
         return 1;
 
     for (; key_cnt-- > 0; keys++) {
-        struct hostent *ent = NULL;
-        char **aliases = NULL;
         char dst6[sizeof(struct in6_addr)];
         char dst[sizeof(struct in6_addr)];
         /*@-compdef@*/
@@ -82,30 +113,11 @@ static int get_hosts(/*@null@*/ const char **keys, int key_cnt)
         if (addr == -1 && addr6 == -1)
             continue;
         else if (addr == 0 && addr6 == 0) {
-            ent = gethostbyname2(*keys, AF_INET6);
-            if (ent == NULL)
-                ent = gethostbyname2(*keys, AF_INET);
+            print_by_host(*keys);
         } else if (addr6 == 1) {
-            /*@-compdef@ @-type@*/
-            ent = gethostbyaddr(dst6, sizeof(struct in6_addr), AF_INET6);
-            /*@=compdef@*/
         } else
-            /*@-compdef@*/
-            ent = gethostbyaddr(dst, sizeof(struct in_addr), AF_INET);
-            /*@=compdef@ @=type@*/
+            ;
 
-        if (ent == NULL)
-            continue;
-
-        print_addr(ent->h_addr_list[0], ent->h_length, addr_align_to);
-        printf("%s", ent->h_name);
-
-        aliases = ent->h_aliases;
-        while (aliases != NULL && *aliases != NULL) {
-            printf(" %s", *aliases);
-            aliases++;
-        }
-        printf("\n");
     }
 
     return 0;
