@@ -83,8 +83,15 @@ static int read_hosts(/*@null@*/ const char **keys, int key_cnt)
     sethostent(0);
     while ((ent = gethostent()) != NULL) {
         if (keys == NULL || match_key(keys, key_cnt, ent->h_name) == 1) {
+            char **aliases = ent->h_aliases;
+
             print_addr(ent->h_addr_list[0], ent->h_length, addr_align_to);
-            printf("%s\n", ent->h_name);
+            printf("%s", ent->h_name);
+            while (aliases != NULL && *aliases != NULL) {
+                printf(" %s", *aliases);
+                aliases++;
+            }
+            printf("\n");
         }
     }
     endhostent();
