@@ -15,7 +15,6 @@
 
 static const int addr_align_to = 16;
 #define DST_LEN 256
-#define HOST_LEN 256
 
 enum {
     HELP_SHORT,
@@ -66,34 +65,38 @@ static void print_addr(char *addr, int len, int align_to)
             break;
 }
 
-static void print_sockaddr(struct sockaddr *addr, int family)
+static void print_sockaddr(struct sockaddr *addr, int family, int align_to)
 {
     char dst[DST_LEN];
-    char host[HOST_LEN];
+    char host[NI_MAXHOST];
+    int cnt = 0;
 
     if (family == AF_INET) {
         struct sockaddr_in *sin = (struct sockaddr_in *)addr;
         /*@-compdef@ @-mustfreefresh@ */
-        printf("%s ", inet_ntop(AF_INET, (const void *)&sin->sin_addr, (char *)dst, DST_LEN));
+        cnt += printf("%s ", inet_ntop(AF_INET, (const void *)&sin->sin_addr, (char *)dst, DST_LEN));
         /*@=compdef@ @=mustfreefresh@*/
     } else {
         struct sockaddr_in6 *sin = (struct sockaddr_in6 *)addr;
         /*@-compdef@ @-mustfreefresh@*/
-        printf("%s ", inet_ntop(AF_INET6, (const void *)&sin->sin6_addr, (char *)dst, DST_LEN));
+        cnt += printf("%s ", inet_ntop(AF_INET6, (const void *)&sin->sin6_addr, (char *)dst, DST_LEN));
         /*@=compdef@ @=mustfreefresh@*/
     }
-    /*@-compdef@ @-type@ @-nullpass@*/
-    (void)getnameinfo(addr, family == AF_INET ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), host, HOST_LEN, NULL, 0, 0);
+    while (++cnt < align_to)
+        if (fputc(' ', stdout) == EOF)
+            break;
+    /*@-compdef@ @-type@ @-nullpass@ FIXME Missing alias names */
+    (void)getnameinfo(addr, family == AF_INET ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), host, NI_MAXHOST, NULL, 0, 0);
     /*@=compdef@ @=type@ @=nullpass@*/
     /*@-type@*/
-    host[HOST_LEN - 1] = 0;
+    host[NI_MAXHOST- 1] = 0;
     /*@=type@*/
     /*@-compdef@ @-nullpass@ @-usedef@*/
     printf("%s\n", host);
     /*@=compdef@ @=nullpass@ @=usedef@*/
 }
 
-static void print_by_host(const char *key)
+static void print_host_info(const char *key)
 {
     struct addrinfo *info = NULL;
     int res = 0;
@@ -104,7 +107,7 @@ static void print_by_host(const char *key)
     if (res != 0 || info == NULL)
         return;
 
-    print_sockaddr(info->ai_addr, info->ai_family);
+    print_sockaddr(info->ai_addr, info->ai_family, addr_align_to);
 
     freeaddrinfo(info);
 }
@@ -114,23 +117,8 @@ static int get_hosts(/*@null@*/ const char **keys, int key_cnt)
     if (keys == NULL)
         return 1;
 
-    for (; key_cnt-- > 0; keys++) {
-        char dst6[sizeof(struct in6_addr)];
-        char dst[sizeof(struct in6_addr)];
-        /*@-compdef@*/
-        int addr6 = inet_pton(AF_INET6, *keys, dst6);
-        int addr = inet_pton(AF_INET, *keys, dst);
-        /*@=compdef@*/
-
-        if (addr == -1 && addr6 == -1)
-            continue;
-        else if (addr == 0 && addr6 == 0) {
-            print_by_host(*keys);
-        } else if (addr6 == 1) {
-        } else
-            ;
-
-    }
+    for (; key_cnt-- > 0; keys++)
+        print_host_info(*keys);
 
     return 0;
 }
