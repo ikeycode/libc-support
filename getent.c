@@ -1,3 +1,7 @@
+#ifdef S_SPLINT_S
+/* Hack for splint parse error caused by bits/thread-shared-types.h */
+#define _THREAD_SHARED_TYPES_H
+#endif
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdio.h>
@@ -6,10 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#ifdef S_SPLINT_S
-/* Hack for splint parse error caused by bits/thread-shared-types.h */
-#define _THREAD_SHARED_TYPES_H
-#endif
 #include <netdb.h>
 #include <arpa/inet.h>
 
@@ -73,14 +73,24 @@ static void print_sockaddr(struct sockaddr *addr, int family)
 
     if (family == AF_INET) {
         struct sockaddr_in *sin = (struct sockaddr_in *)addr;
+        /*@-compdef@ @-mustfreefresh@ */
         printf("%s ", inet_ntop(AF_INET, (const void *)&sin->sin_addr, (char *)dst, DST_LEN));
+        /*@=compdef@ @=mustfreefresh@*/
     } else {
         struct sockaddr_in6 *sin = (struct sockaddr_in6 *)addr;
+        /*@-compdef@ @-mustfreefresh@*/
         printf("%s ", inet_ntop(AF_INET6, (const void *)&sin->sin6_addr, (char *)dst, DST_LEN));
+        /*@=compdef@ @=mustfreefresh@*/
     }
+    /*@-compdef@ @-type@ @-nullpass@*/
     (void)getnameinfo(addr, family == AF_INET ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), host, HOST_LEN, NULL, 0, 0);
+    /*@=compdef@ @=type@ @=nullpass@*/
+    /*@-type@*/
     host[HOST_LEN - 1] = 0;
+    /*@=type@*/
+    /*@-compdef@ @-nullpass@ @-usedef@*/
     printf("%s\n", host);
+    /*@=compdef@ @=nullpass@ @=usedef@*/
 }
 
 static void print_by_host(const char *key)
@@ -88,8 +98,10 @@ static void print_by_host(const char *key)
     struct addrinfo *info = NULL;
     int res = 0;
 
+    /*@-nullpass@*/
     res = getaddrinfo(key, NULL, NULL, &info);
-    if (res != 0)
+    /*@=nullpass@*/
+    if (res != 0 || info == NULL)
         return;
 
     print_sockaddr(info->ai_addr, info->ai_family);
