@@ -3,6 +3,9 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <netdb.h>
+
+static const int addr_align_to = 16;
 
 enum {
     HELP_SHORT,
@@ -35,10 +38,30 @@ static void usage(const char *name, int help)
     exit(EXIT_FAILURE);
 }
 
+static void print_addr(char *addr, int len, unsigned int align_to)
+{
+    int first = 1;
+    int cnt = 0;
+
+    while (len-- > 0) {
+        cnt += printf("%s%hhu", first == 0 ? "." : "", *addr++);
+        first = 0;
+    }
+    while (cnt++ < align_to)
+        if (fputc(' ', stdout) == EOF)
+            break;
+}
+
 static int read_hosts(/*@null@*/ const char *key)
 {
-    if (key == NULL)
-        return 1;
+    struct hostent *ent = NULL;
+
+    sethostent(0);
+    while ((ent = gethostent()) != NULL) {
+        print_addr(ent->h_addr_list[0], ent->h_length, addr_align_to);
+        printf("%s\n", ent->h_name);
+    }
+    endhostent();
 
     return 0;
 }
