@@ -1,4 +1,4 @@
-# Cleanroom genent implementation
+# Cleanroom getent implementation
 
 Implement getent(1) from scratch in cleanroom manner.
 Utilize only man pages, and existing getent binary to inspect how it works.

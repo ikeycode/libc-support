@@ -21,6 +21,27 @@ enum {
     HELP_FULL
 };
 
+enum {
+    HOSTS_HOST,
+    HOSTS_AHOST,
+};
+
+/* From bits/socket_type.h */
+static const char *socktypes[] = {
+    "",
+    "STREAM ",     /* 1 */
+    "DGRAM  ",     /* 2 */
+    "RAW  ",       /* 3 */
+    "RDM  ",       /* 4 */
+    "SEQPACKET  ", /* 5 */
+    "DCCP  ",      /* 6 */
+    "",            /* 7 */
+    "",            /* 8 */
+    "",            /* 9 */
+    "PACKET ",     /* 10 */
+};
+static const int socktype_size = sizeof(socktypes) / sizeof (const char *);
+
 static void err(const char *msg, ...)
 {
     va_list args;
@@ -65,7 +86,7 @@ static void print_addr(char *addr, int len, int align_to)
             break;
 }
 
-static void print_sockaddr(struct sockaddr *addr, int family, int align_to)
+static void print_sockaddr(struct sockaddr *addr, int family, int align_to, int sock_type, int print_host)
 {
     char dst[DST_LEN];
     char host[NI_MAXHOST];
@@ -82,9 +103,15 @@ static void print_sockaddr(struct sockaddr *addr, int family, int align_to)
         cnt += printf("%s ", inet_ntop(AF_INET6, (const void *)&sin->sin6_addr, (char *)dst, DST_LEN));
         /*@=compdef@ @=mustfreefresh@*/
     }
-    while (++cnt < align_to)
+    while (cnt++ < align_to)
         if (fputc(' ', stdout) == EOF)
             break;
+    if (sock_type > 0 && sock_type < socktype_size)
+        printf("%s", socktypes[sock_type]);
+    if (print_host == 0) {
+        printf("\n");
+        return;
+    }
     /*@-compdef@ @-type@ @-nullpass@ FIXME Missing alias names */
     (void)getnameinfo(addr, family == AF_INET ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), host, NI_MAXHOST, NULL, 0, 0);
     /*@=compdef@ @=type@ @=nullpass@*/
@@ -96,7 +123,7 @@ static void print_sockaddr(struct sockaddr *addr, int family, int align_to)
     /*@=compdef@ @=nullpass@ @=usedef@*/
 }
 
-static void print_host_info(const char *key)
+static void print_host_info(const char *key, int host_type)
 {
     struct addrinfo *info = NULL;
     int res = 0;
@@ -107,18 +134,28 @@ static void print_host_info(const char *key)
     if (res != 0 || info == NULL)
         return;
 
-    print_sockaddr(info->ai_addr, info->ai_family, addr_align_to);
+    if (host_type == HOSTS_AHOST) {
+        struct addrinfo *tmp = info;
+        int print_host = 1;
+
+        while (tmp != NULL) {
+            print_sockaddr(tmp->ai_addr, tmp->ai_family, addr_align_to, tmp->ai_socktype, print_host);
+            print_host = 0;
+            tmp = tmp->ai_next;
+        }
+    } else
+        print_sockaddr(info->ai_addr, info->ai_family, addr_align_to, 0, 1);
 
     freeaddrinfo(info);
 }
 
-static int get_hosts(/*@null@*/ const char **keys, int key_cnt)
+static int get_hosts(/*@null@*/ const char **keys, int key_cnt, int host_type)
 {
     if (keys == NULL)
         return 1;
 
     for (; key_cnt-- > 0; keys++)
-        print_host_info(*keys);
+        print_host_info(*keys, host_type);
 
     return 0;
 }
@@ -146,9 +183,13 @@ static int get_hosts_all(void)
 
 static int read_database(const char *dbase, /*@null@*/ const char **keys, int key_cnt)
 {
-    if (strcmp("hosts", dbase) == 0) {
+    if (strcmp("ahosts", dbase) == 0) {
         if (keys != NULL)
-            return get_hosts(keys, key_cnt);
+            return get_hosts(keys, key_cnt, HOSTS_AHOST);
+        return get_hosts_all();
+    } else if (strcmp("hosts", dbase) == 0) {
+        if (keys != NULL)
+            return get_hosts(keys, key_cnt, HOSTS_HOST);
         return get_hosts_all();
     }
 
