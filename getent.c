@@ -40,7 +40,8 @@ static const char *socktypes[] = {
     "",            /* 9 */
     "PACKET ",     /* 10 */
 };
-static const int socktype_size = sizeof(socktypes) / sizeof (const char *);
+
+static const size_t socktype_size = sizeof(socktypes) / sizeof (const char *);
 
 static void err(const char *msg, ...)
 {
@@ -106,7 +107,7 @@ static void print_sockaddr(struct sockaddr *addr, int family, int align_to, int 
     while (cnt++ < align_to)
         if (fputc(' ', stdout) == EOF)
             break;
-    if (sock_type > 0 && sock_type < socktype_size)
+    if (sock_type > 0 && (size_t)sock_type < socktype_size)
         printf("%s", socktypes[sock_type]);
     if (print_host == 0) {
         printf("\n");
