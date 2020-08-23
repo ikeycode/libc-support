@@ -1,0 +1,17 @@
+/configure
+/*.in
+/*.h
+/*.sh
+/config.*
+/depcomp
+/compile
+/*.m4
+.deps
+stamp-*
+/libtool
+*.dirstamp
+/install-sh
+/getconf
+/missing
+/autom4te.cache
+Makefile
