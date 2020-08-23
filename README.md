@@ -28,3 +28,12 @@ quality can not all be assessed.
 
 We will seek clean-room implementations with verifiable git history, proper tagging,
 documentation and static analysis.
+
+### Authors
+
+Original author Jouni Roivas
+
+Copyright © 2020 Serpent OS Developers
+
+Available under the terms of the MIT license
+
