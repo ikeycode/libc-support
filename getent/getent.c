@@ -197,24 +197,46 @@ static int get_hosts_all(void)
     return 0;
 }
 
+static void print_alias_info(struct aliasent *ent)
+{
+    size_t i;
+    int cnt = 0;
+
+    cnt += printf("%s: ", ent->alias_name);
+    while (++cnt < alias_align_to)
+        if (fputc(' ', stdout) == EOF)
+            break;
+    for (i = 0; i < ent->alias_members_len; i++) {
+            printf(" %s", ent->alias_members[i]);
+    }
+    printf("\n");
+}
+
+static int get_aliases(/*@null@*/ const char **keys, int key_cnt)
+{
+    if (keys == NULL)
+        return 1;
+
+    for (; key_cnt-- > 0; keys++) {
+        struct aliasent *ent = NULL;
+
+        /*@-mustfreefresh@*/
+        ent = getaliasbyname(*keys);
+        if (ent != NULL)
+            print_alias_info(ent);
+    }
+    /*@=mustfreefresh@*/
+
+    return 0;
+}
+
 static int get_aliases_all(void)
 {
     struct aliasent *ent = NULL;
 
     setaliasent();
-    while ((ent = getaliasent()) != NULL) {
-        size_t i;
-        int cnt = 0;
-
-        cnt += printf("%s: ", ent->alias_name);
-        while (++cnt < alias_align_to)
-            if (fputc(' ', stdout) == EOF)
-                break;
-        for (i = 0; i < ent->alias_members_len; i++) {
-                printf(" %s", ent->alias_members[i]);
-        }
-        printf("\n");
-    }
+    while ((ent = getaliasent()) != NULL)
+        print_alias_info(ent);
     endaliasent();
 
     return 0;
@@ -239,6 +261,8 @@ static int read_database(const char *dbase, /*@null@*/ const char **keys, int ke
             return get_hosts(keys, key_cnt, HOSTS_HOST);
         return get_hosts_all();
     } else if (strcmp("aliases", dbase) == 0) {
+        if (keys != NULL)
+            return get_aliases(keys, key_cnt);
         return get_aliases_all();
     }
 
