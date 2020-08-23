@@ -15,6 +15,7 @@
 #include <aliases.h>
 #include <netinet/ether.h>
 #include <shadow.h>
+#include <grp.h>
 
 static const int addr_align_to = 16;
 static const int alias_align_to = 16;
@@ -346,8 +347,80 @@ static int get_shadow_all(void)
     return 0;
 }
 
+static void print_group_info(struct group *grp)
+{
+    char **memb = NULL;
+    int first = 1;
+
+    printf("%s", grp->gr_name);
+    printf(":%s", grp->gr_passwd);
+    printf(":");
+    printf("%u", grp->gr_gid);
+    printf(":");
+    for (memb = grp->gr_mem; *memb != NULL; memb++) {
+        printf("%s%s", first == 0 ? "," : "", *memb);
+        first = 0;
+    }
+    printf("\n");
+}
+
+static int is_numeric(const char *v)
+{
+    for (; v != NULL && *v != (char)0; v++)
+        if (*v < '0' || *v > '9')
+            return 0;
+
+    return 1;
+}
+
+static int get_group(/*@null@*/ const char **keys, int key_cnt)
+{
+    if (keys == NULL)
+        return 1;
+
+    for (; key_cnt-- > 0; keys++) {
+        struct group *grp = NULL;
+
+        /*@-mustfreefresh@*/
+        if (is_numeric(*keys) == 1)
+            /*@-type@*/
+            grp = getgrgid(atoi(*keys));
+            /*@=type@*/
+        else
+            grp = getgrnam(*keys);
+        if (grp != NULL)
+            print_group_info(grp);
+    }
+    /*@=mustfreefresh@*/
+
+    return 0;
+}
+
+static int get_group_all(void)
+{
+    struct group *grp = NULL;
+
+    setgrent();
+    while ((grp = getgrent()) != NULL)
+        print_group_info(grp);
+    endgrent();
+
+    return 0;
+}
+
 static int read_database(const char *dbase, /*@null@*/ const char **keys, int key_cnt)
 {
+    /*
+     * Missing:
+     *  gshadow
+     *  initgroups
+     *  netgroup
+     *  networks
+     *  passwd
+     *  protocols
+     *  rpc
+     *  services
+     */
     if (strcmp("ahosts", dbase) == 0) {
         if (keys != NULL)
             return get_hosts(keys, key_cnt, HOSTS_AHOST);
@@ -373,6 +446,10 @@ static int read_database(const char *dbase, /*@null@*/ const char **keys, int ke
             return get_ethers(keys, key_cnt);
         printf("Enumeration not supported on ethers\n");
         return 3;
+    } else if (strcmp("group", dbase) == 0) {
+        if (keys != NULL)
+            return get_group(keys, key_cnt);
+        return get_group_all();
     } else if (strcmp("shadow", dbase) == 0) {
         if (keys != NULL)
             return get_shadow(keys, key_cnt);
