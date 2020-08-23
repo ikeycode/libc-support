@@ -1,10 +1,7 @@
 ### libc-support
 
-This project will eventually host some compatibility tooling making it easier
-to integrate `musl` into Serpent OS, as a modern Linux distribution.
-
-Upstream musl currently lacks some tooling and support that we eventually plan
-to include:
+This project aims to give portable solutions to our current problem: missing
+core tooling in the musl distribution.
 
 #### getconf
 
@@ -15,6 +12,8 @@ OS.
 #### getent
 
 getent extracts values from system databases, such as shadow, files and hosts.
+
+**NOTE**: This tool is still in development and is not shipping in the tarball.
 
 #### mDNS support
 
