@@ -1,3 +1,5 @@
+ACLOCAL_AMFLAGS = -I m4
+
 EXTRA_DIST = ${top_srcdir}/README.md \
 	     ${top_srcdir}/LICENSE
 
