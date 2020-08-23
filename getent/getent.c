@@ -13,6 +13,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <aliases.h>
+#include <netinet/ether.h>
 
 static const int addr_align_to = 16;
 static const int alias_align_to = 16;
@@ -73,6 +74,13 @@ static void usage(const char *name, int help)
     exit(EXIT_FAILURE);
 }
 
+static void print_align_to(int cnt, int align_to)
+{
+    while (++cnt < align_to)
+        if (fputc(' ', stdout) == EOF)
+            break;
+}
+
 static void print_addr(char *addr, int len, int align_to)
 {
     int first = 1;
@@ -86,9 +94,7 @@ static void print_addr(char *addr, int len, int align_to)
         first = 0;
     }
     printf(" ");
-    while (++cnt < align_to)
-        if (fputc(' ', stdout) == EOF)
-            break;
+    print_align_to(cnt, align_to);
 }
 
 static void print_sockaddr(struct sockaddr *addr, int family, int align_to, int sock_type, int print_host)
@@ -108,9 +114,7 @@ static void print_sockaddr(struct sockaddr *addr, int family, int align_to, int 
         cnt += printf("%s ", inet_ntop(AF_INET6, (const void *)&sin->sin6_addr, (char *)dst, DST_LEN));
         /*@=compdef@ @=mustfreefresh@*/
     }
-    while (cnt++ < align_to)
-        if (fputc(' ', stdout) == EOF)
-            break;
+    print_align_to(cnt, align_to);
     if (sock_type > 0 && (size_t)sock_type < socktype_size)
         printf("%s", socktypes[sock_type]);
     if (print_host == 0) {
@@ -203,9 +207,7 @@ static void print_alias_info(struct aliasent *ent)
     int cnt = 0;
 
     cnt += printf("%s: ", ent->alias_name);
-    while (++cnt < alias_align_to)
-        if (fputc(' ', stdout) == EOF)
-            break;
+    print_align_to(cnt, alias_align_to);
     for (i = 0; i < ent->alias_members_len; i++) {
             printf(" %s", ent->alias_members[i]);
     }
@@ -242,6 +244,51 @@ static int get_aliases_all(void)
     return 0;
 }
 
+static int get_ethers(/*@null@*/ const char **keys, int key_cnt)
+{
+    struct ether_addr *addr = NULL;
+    struct ether_addr addr_dst;
+    if (keys == NULL)
+        return 1;
+
+    for (; key_cnt-- > 0; keys++) {
+        char hostname[NI_MAXHOST];
+        int cnt = 0;
+        int res = 0;
+
+        addr = ether_aton(*keys);
+        if (addr != NULL) {
+            char *addr_str = ether_ntoa(addr);
+            /*@-mustfreefresh@*/
+            if (addr_str == NULL)
+                return 2;
+            cnt += printf("%s ", addr_str);
+        } else {
+            /*@=mustfreefresh@*/
+            memset(&addr_dst, 0, sizeof(struct ether_addr));
+            res = ether_hostton(*keys, &addr_dst);
+
+            if (res != 0)
+                return 2;
+            /*@-mustfreefresh@*/
+            printf("%s ", ether_ntoa(&addr_dst));
+            /*@=mustfreefresh@*/
+            /*@-branchstate@*/
+            addr = &addr_dst;
+        }
+        /*@=branchstate@*/
+        /*@-compdef@*/
+        res = ether_ntohost(hostname, addr);
+        if (res != 0)
+            return 2;
+        /*@-usedef@*/
+        printf("%s\n", hostname);
+        /*@=compdef@ @=usedef@*/
+    }
+
+    return 0;
+}
+
 static int read_database(const char *dbase, /*@null@*/ const char **keys, int key_cnt)
 {
     if (strcmp("ahosts", dbase) == 0) {
@@ -264,6 +311,11 @@ static int read_database(const char *dbase, /*@null@*/ const char **keys, int ke
         if (keys != NULL)
             return get_aliases(keys, key_cnt);
         return get_aliases_all();
+    } else if (strcmp("ethers", dbase) == 0) {
+        if (keys != NULL)
+            return get_ethers(keys, key_cnt);
+        printf("Enumeration not supported on ethers\n");
+        return 3;
     }
 
     err("Unknown database: %s\n", dbase);
