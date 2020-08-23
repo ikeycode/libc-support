@@ -228,7 +228,12 @@ int main(int argc, char **argv)
     for (index = 1; index < argc; index++) {
         if (strcmp("-h", argv[index]) == 0)
             usage(argv[0], HELP_FULL);
-        else if (dbase == NULL)
+        else if (strcmp("-s", argv[index]) == 0 || strcmp("--service", argv[index]) == 0) {
+            index++;
+            /* Ignored for now */
+        } else if (strcmp("-i", argv[index]) == 0) {
+            /* Ignored for now */
+        } else if (dbase == NULL)
             dbase = argv[index];
         else if (keys == NULL) {
             keys = (const char **)&argv[index];
