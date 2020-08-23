@@ -12,8 +12,10 @@
 #include <strings.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <aliases.h>
 
 static const int addr_align_to = 16;
+static const int alias_align_to = 16;
 #define DST_LEN 256
 
 enum {
@@ -195,6 +197,29 @@ static int get_hosts_all(void)
     return 0;
 }
 
+static int get_aliases_all(void)
+{
+    struct aliasent *ent = NULL;
+
+    setaliasent();
+    while ((ent = getaliasent()) != NULL) {
+        size_t i;
+        int cnt = 0;
+
+        cnt += printf("%s: ", ent->alias_name);
+        while (++cnt < alias_align_to)
+            if (fputc(' ', stdout) == EOF)
+                break;
+        for (i = 0; i < ent->alias_members_len; i++) {
+                printf(" %s", ent->alias_members[i]);
+        }
+        printf("\n");
+    }
+    endaliasent();
+
+    return 0;
+}
+
 static int read_database(const char *dbase, /*@null@*/ const char **keys, int key_cnt)
 {
     if (strcmp("ahosts", dbase) == 0) {
@@ -213,6 +238,8 @@ static int read_database(const char *dbase, /*@null@*/ const char **keys, int ke
         if (keys != NULL)
             return get_hosts(keys, key_cnt, HOSTS_HOST);
         return get_hosts_all();
+    } else if (strcmp("aliases", dbase) == 0) {
+        return get_aliases_all();
     }
 
     err("Unknown database: %s\n", dbase);
