@@ -1,7 +1,8 @@
 ACLOCAL_AMFLAGS = -I m4
 
 EXTRA_DIST = ${top_srcdir}/README.md \
-	     ${top_srcdir}/LICENSE
+	     ${top_srcdir}/LICENSE   \
+	     ${topsrcdir}/src/getconf/getconf.inc
 
 NULL =
 CLEANFILES =
