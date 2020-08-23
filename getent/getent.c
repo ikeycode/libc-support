@@ -23,6 +23,7 @@ static const int addr_align_to = 16;
 static const int alias_align_to = 16;
 static const int network_align_to = 23;
 static const int rpc_align_to = 17;
+static const int proto_align_to = 23;
 #define DST_LEN 256
 
 enum {
@@ -628,13 +629,61 @@ static int get_rpc_all(void)
     return RES_OK;
 }
 
+static void print_protocol_info(struct protoent *ent)
+{
+    char **alias = NULL;
+    int cnt = 0;
+
+    cnt += printf("%s ", ent->p_name);
+    print_align_to(cnt, proto_align_to);
+    printf("%d", ent->p_proto);
+    for (alias = ent->p_aliases; alias != NULL && *alias != NULL; alias++) {
+        printf(" %s", *alias);
+    }
+    printf("\n");
+}
+
+static int get_protocols(/*@null@*/ const char **keys, int key_cnt)
+{
+    if (keys == NULL)
+        return RES_KEY_NOT_FOUND;
+
+    for (; key_cnt-- > 0; keys++) {
+        struct protoent *ent = NULL;
+
+        if (*keys == NULL)
+            continue;
+        if (is_numeric(*keys) == 1)
+            ent = getprotobynumber(atoi(*keys));
+        else
+            ent = getprotobyname(*keys);
+        /*@-mustfreefresh@*/
+        if (ent != NULL)
+            print_protocol_info(ent);
+    }
+    /*@=mustfreefresh@*/
+
+    return RES_OK;
+}
+
+static int get_protocols_all(void)
+{
+    struct protoent *ent = NULL;
+
+    setprotoent(1);
+    while ((ent = getprotoent()) != NULL)
+        print_protocol_info(ent);
+    endprotoent();
+
+    return RES_OK;
+}
+
 static int read_database(const char *dbase, /*@null@*/ const char **keys, int key_cnt)
 {
     /*
      * Missing:
      *  initgroups
      *  netgroup
-     *  protocols
      *  services
      */
     if (strcmp("ahosts", dbase) == 0) {
@@ -678,6 +727,10 @@ static int read_database(const char *dbase, /*@null@*/ const char **keys, int ke
         if (keys != NULL)
             return get_passwd(keys, key_cnt);
         return get_passwd_all();
+    } else if (strcmp("protocols", dbase) == 0) {
+        if (keys != NULL)
+            return get_protocols(keys, key_cnt);
+        return get_protocols_all();
     } else if (strcmp("rpc", dbase) == 0) {
         if (keys != NULL)
             return get_rpc(keys, key_cnt);
