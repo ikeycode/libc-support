@@ -14,7 +14,7 @@ AC_OUTPUT
 
 AC_MSG_RESULT([
         libc-support $VERSION
-        ========
+        =====================
 
         prefix:                 ${prefix}
         libdir:                 ${libdir}
