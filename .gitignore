@@ -1,7 +1,6 @@
 /configure
 /*.in
 /*.h
-/*.sh
 /config.*
 /depcomp
 /compile
@@ -9,6 +8,7 @@
 .deps
 stamp-*
 /libtool
+/ltmain.sh
 *.dirstamp
 /install-sh
 /getconf
