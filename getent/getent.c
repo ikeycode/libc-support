@@ -24,7 +24,10 @@ static const int alias_align_to = 16;
 static const int network_align_to = 23;
 static const int rpc_align_to = 17;
 static const int proto_align_to = 23;
+static const int initgroup_align_to = 23;
+
 #define DST_LEN 256
+static const size_t MAX_GROUP_CNT = 256;
 
 enum {
     HELP_SHORT,
@@ -735,11 +738,39 @@ static int get_services_all(void)
     return RES_OK;
 }
 
+static int get_initgroups(/*@null@*/ const char **keys, int key_cnt)
+{
+    if (keys == NULL)
+        return RES_KEY_NOT_FOUND;
+
+    for (; key_cnt-- > 0; keys++) {
+        gid_t *groups = calloc(MAX_GROUP_CNT, sizeof(gid_t));
+        int group_cnt = MAX_GROUP_CNT;
+        int i = 0;
+        int cnt = 0;
+
+        if (getgrouplist(*keys, 0, groups, &group_cnt) == -1) {
+            free(groups);
+            return RES_KEY_NOT_FOUND;
+        }
+        cnt += printf("%s ", *keys);
+        print_align_to(cnt, initgroup_align_to);
+        for (i = 0; i < group_cnt; i++) {
+            if (groups[i] > 0)
+                printf("%u ", groups[i]);
+        }
+        printf("\n");
+        free(groups);
+    }
+
+    return RES_OK;
+}
+
+
 static int read_database(const char *dbase, /*@null@*/ const char **keys, int key_cnt)
 {
     /*
      * Missing:
-     *  initgroups
      *  netgroup
      */
     if (strcmp("ahosts", dbase) == 0) {
@@ -766,7 +797,7 @@ static int read_database(const char *dbase, /*@null@*/ const char **keys, int ke
         if (keys != NULL)
             return get_ethers(keys, key_cnt);
         printf("Enumeration not supported on ethers\n");
-        return 3;
+        return RES_ENUMERATION_NOT_SUPPORTED;
     } else if (strcmp("group", dbase) == 0) {
         if (keys != NULL)
             return get_group(keys, key_cnt);
@@ -775,6 +806,11 @@ static int read_database(const char *dbase, /*@null@*/ const char **keys, int ke
         if (keys != NULL)
             return get_gshadow(keys, key_cnt);
         return get_gshadow_all();
+    } else if (strcmp("initgroups", dbase) == 0) {
+        if (keys != NULL)
+            return get_initgroups(keys, key_cnt);
+        printf("Enumeration not supported on initgroups\n");
+        return RES_ENUMERATION_NOT_SUPPORTED;
     } else if (strcmp("networks", dbase) == 0) {
         if (keys != NULL)
             return get_networks(keys, key_cnt);
