@@ -745,19 +745,26 @@ static int get_initgroups(/*@null@*/ const char **keys, int key_cnt)
 
     for (; key_cnt-- > 0; keys++) {
         gid_t *groups = calloc(MAX_GROUP_CNT, sizeof(gid_t));
-        int group_cnt = MAX_GROUP_CNT;
+        int group_cnt = (int)MAX_GROUP_CNT;
         int i = 0;
         int cnt = 0;
 
+        if (groups == NULL)
+            err("Out of memory");
+
+        /*@-type@ @-nullpass@*/
         if (getgrouplist(*keys, 0, groups, &group_cnt) == -1) {
+            /*@=type@  @=nullpass@*/
             free(groups);
             return RES_KEY_NOT_FOUND;
         }
         cnt += printf("%s ", *keys);
         print_align_to(cnt, initgroup_align_to);
         for (i = 0; i < group_cnt; i++) {
-            if (groups[i] > 0)
+            /*@+matchanyintegral@*/
+            if (groups != NULL && groups[i] > 0)
                 printf("%u ", groups[i]);
+            /*@=matchanyintegral@*/
         }
         printf("\n");
         free(groups);
