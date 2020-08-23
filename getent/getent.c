@@ -678,13 +678,67 @@ static int get_protocols_all(void)
     return RES_OK;
 }
 
+static void print_service_info(struct servent *ent)
+{
+    char **alias = NULL;
+    int cnt = 0;
+
+    cnt = printf("%s ", ent->s_name);
+    print_align_to(cnt, proto_align_to);
+    /*@+matchanyintegral@*/
+    printf("%hu/%s", ntohs((uint16_t)ent->s_port), ent->s_proto);
+    /*@=matchanyintegral@*/
+    for (alias = ent->s_aliases; alias != NULL && *alias != NULL; alias++) {
+        printf(" %s", *alias);
+    }
+    printf("\n");
+}
+
+static int get_services(/*@null@*/ const char **keys, int key_cnt)
+{
+    if (keys == NULL)
+        return RES_KEY_NOT_FOUND;
+
+    for (; key_cnt-- > 0; keys++) {
+        struct servent *ent = NULL;
+
+        if (*keys == NULL)
+            continue;
+        if (is_numeric(*keys) == 1)
+            /*@+matchanyintegral@ @-nullpass@*/
+            ent = getservbyport(htons((uint16_t)atoi(*keys)), NULL);
+            /*@=matchanyintegral@ @=nullpass@*/
+        else
+            /*@-nullpass@*/
+            ent = getservbyname(*keys, NULL);
+            /*@=nullpass@*/
+        /*@-mustfreefresh@*/
+        if (ent != NULL)
+            print_service_info(ent);
+    }
+    /*@=mustfreefresh@*/
+
+    return RES_OK;
+}
+
+static int get_services_all(void)
+{
+    struct servent *ent = NULL;
+
+    setservent(1);
+    while ((ent = getservent()) != NULL)
+        print_service_info(ent);
+    endservent();
+
+    return RES_OK;
+}
+
 static int read_database(const char *dbase, /*@null@*/ const char **keys, int key_cnt)
 {
     /*
      * Missing:
      *  initgroups
      *  netgroup
-     *  services
      */
     if (strcmp("ahosts", dbase) == 0) {
         if (keys != NULL)
@@ -735,6 +789,10 @@ static int read_database(const char *dbase, /*@null@*/ const char **keys, int ke
         if (keys != NULL)
             return get_rpc(keys, key_cnt);
         return get_rpc_all();
+    } else if (strcmp("services", dbase) == 0) {
+        if (keys != NULL)
+            return get_services(keys, key_cnt);
+        return get_services_all();
     } else if (strcmp("shadow", dbase) == 0) {
         if (keys != NULL)
             return get_shadow(keys, key_cnt);
