@@ -16,6 +16,7 @@
 #include <netinet/ether.h>
 #include <shadow.h>
 #include <grp.h>
+#include <pwd.h>
 
 static const int addr_align_to = 16;
 static const int alias_align_to = 16;
@@ -255,7 +256,6 @@ static int get_ethers(/*@null@*/ const char **keys, int key_cnt)
 
     for (; key_cnt-- > 0; keys++) {
         char hostname[NI_MAXHOST];
-        int cnt = 0;
         int res = 0;
 
         addr = ether_aton(*keys);
@@ -264,7 +264,7 @@ static int get_ethers(/*@null@*/ const char **keys, int key_cnt)
             /*@-mustfreefresh@*/
             if (addr_str == NULL)
                 return 2;
-            cnt += printf("%s ", addr_str);
+            printf("%s ", addr_str);
         } else {
             /*@=mustfreefresh@*/
             memset(&addr_dst, 0, sizeof(struct ether_addr));
@@ -347,6 +347,54 @@ static int get_shadow_all(void)
     return 0;
 }
 
+static void print_passwd_info(struct passwd *pwd)
+{
+    printf("%s", pwd->pw_name);
+    printf(":%s", pwd->pw_passwd);
+    printf(":%u", pwd->pw_uid);
+    printf(":%u", pwd->pw_gid);
+    printf(":");
+    if (pwd->pw_gecos != NULL)
+        printf("%s", pwd->pw_gecos);
+    printf(":");
+    if (pwd->pw_dir != NULL)
+        printf("%s", pwd->pw_dir);
+    printf(":");
+    if (pwd->pw_shell != NULL)
+        printf("%s", pwd->pw_shell);
+    printf("\n");
+}
+
+static int get_passwd(/*@null@*/ const char **keys, int key_cnt)
+{
+    if (keys == NULL)
+        return 1;
+
+    for (; key_cnt-- > 0; keys++) {
+        struct passwd *pwd = NULL;
+
+        /*@-mustfreefresh@*/
+        pwd = getpwnam(*keys);
+        if (pwd != NULL)
+            print_passwd_info(pwd);
+    }
+    /*@=mustfreefresh@*/
+
+    return 0;
+}
+
+static int get_passwd_all(void)
+{
+    struct passwd *pwd = NULL;
+
+    setpwent();
+    while ((pwd = getpwent()) != NULL)
+        print_passwd_info(pwd);
+    endpwent();
+
+    return 0;
+}
+
 static void print_group_info(struct group *grp)
 {
     char **memb = NULL;
@@ -416,7 +464,6 @@ static int read_database(const char *dbase, /*@null@*/ const char **keys, int ke
      *  initgroups
      *  netgroup
      *  networks
-     *  passwd
      *  protocols
      *  rpc
      *  services
@@ -450,6 +497,10 @@ static int read_database(const char *dbase, /*@null@*/ const char **keys, int ke
         if (keys != NULL)
             return get_group(keys, key_cnt);
         return get_group_all();
+    } else if (strcmp("passwd", dbase) == 0) {
+        if (keys != NULL)
+            return get_passwd(keys, key_cnt);
+        return get_passwd_all();
     } else if (strcmp("shadow", dbase) == 0) {
         if (keys != NULL)
             return get_shadow(keys, key_cnt);
