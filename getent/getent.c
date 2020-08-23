@@ -22,6 +22,7 @@
 static const int addr_align_to = 16;
 static const int alias_align_to = 16;
 static const int network_align_to = 23;
+static const int rpc_align_to = 17;
 #define DST_LEN 256
 
 enum {
@@ -466,6 +467,8 @@ static void print_group_info(struct group *grp)
 
 static int is_numeric(const char *v)
 {
+    if (v == NULL)
+        return 1;
     for (; v != NULL && *v != (char)0; v++)
         if (*v < '0' || *v > '9')
             return 0;
@@ -481,6 +484,8 @@ static int get_group(/*@null@*/ const char **keys, int key_cnt)
     for (; key_cnt-- > 0; keys++) {
         struct group *grp = NULL;
 
+        if (*keys == NULL)
+            continue;
         /*@-mustfreefresh@*/
         if (is_numeric(*keys) == 1)
             /*@-type@*/
@@ -552,7 +557,6 @@ static int get_networks(/*@null@*/ const char **keys, int key_cnt)
     return 0;
 }
 
-
 static int get_networks_all(void)
 {
     struct netent *net = NULL;
@@ -565,6 +569,58 @@ static int get_networks_all(void)
     return 0;
 }
 
+static void print_rpc_info(struct rpcent *rpc)
+{
+    char **alias = NULL;
+    int cnt = 0;
+    int first = 1;
+
+    cnt += printf("%s ", rpc->r_name);
+    print_align_to(cnt, rpc_align_to);
+    printf("%d", rpc->r_number);
+
+    for (alias = rpc->r_aliases; alias != NULL && *alias != NULL; alias++) {
+        printf("%s%s", first == 1 ? "  " : " ", *alias);
+        first = 0;
+    }
+    printf("\n");
+}
+
+static int get_rpc(/*@null@*/ const char **keys, int key_cnt)
+{
+    if (keys == NULL)
+        return 1;
+
+    for (; key_cnt-- > 0; keys++) {
+        struct rpcent *rpc = NULL;
+
+        if (*keys == NULL)
+            continue;
+        if (is_numeric(*keys) == 1)
+            rpc = getrpcbynumber(atoi(*keys));
+        else
+            rpc = getrpcbyname(*keys);
+        /*@-mustfreefresh@*/
+        if (rpc != NULL)
+            print_rpc_info(rpc);
+    }
+    /*@=mustfreefresh@*/
+
+    return 0;
+}
+
+static int get_rpc_all(void)
+{
+    struct rpcent *rpc = NULL;
+
+    setrpcent(1);
+    while ((rpc = getrpcent()) != NULL)
+        print_rpc_info(rpc);
+    endrpcent();
+
+    return 0;
+}
+
 static int read_database(const char *dbase, /*@null@*/ const char **keys, int key_cnt)
 {
     /*
@@ -572,7 +628,6 @@ static int read_database(const char *dbase, /*@null@*/ const char **keys, int ke
      *  initgroups
      *  netgroup
      *  protocols
-     *  rpc
      *  services
      */
     if (strcmp("ahosts", dbase) == 0) {
@@ -616,6 +671,10 @@ static int read_database(const char *dbase, /*@null@*/ const char **keys, int ke
         if (keys != NULL)
             return get_passwd(keys, key_cnt);
         return get_passwd_all();
+    } else if (strcmp("rpc", dbase) == 0) {
+        if (keys != NULL)
+            return get_rpc(keys, key_cnt);
+        return get_rpc_all();
     } else if (strcmp("shadow", dbase) == 0) {
         if (keys != NULL)
             return get_shadow(keys, key_cnt);
