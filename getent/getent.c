@@ -21,6 +21,7 @@
 
 static const int addr_align_to = 16;
 static const int alias_align_to = 16;
+static const int network_align_to = 23;
 #define DST_LEN 256
 
 enum {
@@ -507,13 +508,69 @@ static int get_group_all(void)
     return 0;
 }
 
+static void print_network_info(struct netent *net)
+{
+    unsigned char *tmp = (unsigned char*)&net->n_net;
+    int cnt = 0;
+
+    cnt += printf("%s ", net->n_name);
+    print_align_to(cnt, network_align_to);
+    /*@+charint@*/
+    printf("%hhu.%hhu.%hhu.%hhu\n", tmp[3], tmp[2], tmp[1], tmp[0]);
+    /*@=charint@*/
+}
+
+static int get_networks(/*@null@*/ const char **keys, int key_cnt)
+{
+    if (keys == NULL)
+        return 1;
+
+    for (; key_cnt-- > 0; keys++) {
+        struct netent *net = NULL;
+
+        net = getnetbyname(*keys);
+        if (net == NULL) {
+            char dst[sizeof(uint32_t)];
+            uint32_t addr = 0;
+
+            /* TODO Find better way to get uint32_t network address */
+            /*@-compdef@*/
+            if (inet_pton(AF_INET, *keys, dst) != 1)
+                return 2;
+            /*@=compdef@*/
+            /*@-usedef@*/
+            addr = htonl(*(uint32_t*)dst);
+            /*@=usedef@*/
+            net = getnetbyaddr(addr, AF_INET);
+        }
+        /*@-mustfreefresh@*/
+        if (net != NULL)
+            print_network_info(net);
+    }
+    /*@=mustfreefresh@*/
+
+    return 0;
+}
+
+
+static int get_networks_all(void)
+{
+    struct netent *net = NULL;
+
+    setnetent(1);
+    while ((net = getnetent()) != NULL)
+        print_network_info(net);
+    endnetent();
+
+    return 0;
+}
+
 static int read_database(const char *dbase, /*@null@*/ const char **keys, int key_cnt)
 {
     /*
      * Missing:
      *  initgroups
      *  netgroup
-     *  networks
      *  protocols
      *  rpc
      *  services
@@ -551,6 +608,10 @@ static int read_database(const char *dbase, /*@null@*/ const char **keys, int ke
         if (keys != NULL)
             return get_gshadow(keys, key_cnt);
         return get_gshadow_all();
+    } else if (strcmp("networks", dbase) == 0) {
+        if (keys != NULL)
+            return get_networks(keys, key_cnt);
+        return get_networks_all();
     } else if (strcmp("passwd", dbase) == 0) {
         if (keys != NULL)
             return get_passwd(keys, key_cnt);
