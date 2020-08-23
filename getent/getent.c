@@ -17,6 +17,7 @@
 #include <shadow.h>
 #include <grp.h>
 #include <pwd.h>
+#include <gshadow.h>
 
 static const int addr_align_to = 16;
 static const int alias_align_to = 16;
@@ -347,6 +348,56 @@ static int get_shadow_all(void)
     return 0;
 }
 
+static void print_gshadow_info(struct sgrp *pwd)
+{
+    char **memb = NULL;
+    int first = 1;
+
+    printf("%s", pwd->sg_namp);
+    printf(":%s", pwd->sg_passwd);
+    printf(":");
+    for (first = 1, memb = pwd->sg_adm; *memb != NULL; memb++) {
+        printf("%s%s", first == 0 ? "," : "", *memb);
+        first = 0;
+    }
+    printf(":");
+    for (first = 1, memb = pwd->sg_mem; *memb != NULL; memb++) {
+        printf("%s%s", first == 0 ? "," : "", *memb);
+        first = 0;
+    }
+    printf("\n");
+}
+
+static int get_gshadow(/*@null@*/ const char **keys, int key_cnt)
+{
+    if (keys == NULL)
+        return 1;
+
+    for (; key_cnt-- > 0; keys++) {
+        struct sgrp *pwd = NULL;
+
+        /*@-mustfreefresh@*/
+        pwd = getsgnam(*keys);
+        if (pwd != NULL)
+            print_gshadow_info(pwd);
+    }
+    /*@=mustfreefresh@*/
+
+    return 0;
+}
+
+static int get_gshadow_all(void)
+{
+    struct sgrp *pwd = NULL;
+
+    setsgent();
+    while ((pwd = getsgent()) != NULL)
+        print_gshadow_info(pwd);
+    endsgent();
+
+    return 0;
+}
+
 static void print_passwd_info(struct passwd *pwd)
 {
     printf("%s", pwd->pw_name);
@@ -460,7 +511,6 @@ static int read_database(const char *dbase, /*@null@*/ const char **keys, int ke
 {
     /*
      * Missing:
-     *  gshadow
      *  initgroups
      *  netgroup
      *  networks
@@ -497,6 +547,10 @@ static int read_database(const char *dbase, /*@null@*/ const char **keys, int ke
         if (keys != NULL)
             return get_group(keys, key_cnt);
         return get_group_all();
+    } else if (strcmp("gshadow", dbase) == 0) {
+        if (keys != NULL)
+            return get_gshadow(keys, key_cnt);
+        return get_gshadow_all();
     } else if (strcmp("passwd", dbase) == 0) {
         if (keys != NULL)
             return get_passwd(keys, key_cnt);
