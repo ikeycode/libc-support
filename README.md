@@ -6,7 +6,7 @@ core tooling in the musl distribution.
 #### getconf
 
 getconf is used throughout many shell scripts and utilities to obtain system
-configuration values and paths. It is present on almost every \*nix compatible
+configuration values and paths. It is present on almost every *nix compatible
 OS.
 
 #### getent
