@@ -24,6 +24,8 @@ enum {
 enum {
     HOSTS_HOST,
     HOSTS_AHOST,
+    HOSTS_AHOST_V4,
+    HOSTS_AHOST_V6,
 };
 
 /* From bits/socket_type.h */
@@ -127,28 +129,39 @@ static void print_sockaddr(struct sockaddr *addr, int family, int align_to, int 
 static void print_host_info(const char *key, int host_type)
 {
     struct addrinfo *info = NULL;
+    struct addrinfo hints;
     int res = 0;
 
+    memset(&hints, 0, sizeof(struct addrinfo));
+    if (host_type == HOSTS_AHOST_V6) {
+        hints.ai_family = AF_INET6;
+        hints.ai_flags = AI_V4MAPPED;
+    } else if (host_type == HOSTS_AHOST_V4) {
+        hints.ai_family = AF_INET;
+    }
     /*@-nullpass@*/
-    res = getaddrinfo(key, NULL, NULL, &info);
+    res = getaddrinfo(key, NULL, &hints, &info);
     /*@=nullpass@*/
     if (res != 0 || info == NULL)
+    /*@-compdestroy@*/
         return;
+    /*@=compdestroy@*/
 
-    if (host_type == HOSTS_AHOST) {
+    if (host_type == HOSTS_AHOST || host_type == HOSTS_AHOST_V4 || host_type == HOSTS_AHOST_V6) {
         struct addrinfo *tmp = info;
         int print_host = 1;
 
-        while (tmp != NULL) {
+        for (; tmp != NULL; tmp = tmp->ai_next) {
             print_sockaddr(tmp->ai_addr, tmp->ai_family, addr_align_to, tmp->ai_socktype, print_host);
             print_host = 0;
-            tmp = tmp->ai_next;
         }
     } else
         print_sockaddr(info->ai_addr, info->ai_family, addr_align_to, 0, 1);
 
     freeaddrinfo(info);
+    /*@-compdestroy@*/
 }
+/*@=compdestroy@*/
 
 static int get_hosts(/*@null@*/ const char **keys, int key_cnt, int host_type)
 {
@@ -187,6 +200,14 @@ static int read_database(const char *dbase, /*@null@*/ const char **keys, int ke
     if (strcmp("ahosts", dbase) == 0) {
         if (keys != NULL)
             return get_hosts(keys, key_cnt, HOSTS_AHOST);
+        return get_hosts_all();
+    } else if (strcmp("ahostsv4", dbase) == 0) {
+        if (keys != NULL)
+            return get_hosts(keys, key_cnt, HOSTS_AHOST_V4);
+        return get_hosts_all();
+    } else if (strcmp("ahostsv6", dbase) == 0) {
+        if (keys != NULL)
+            return get_hosts(keys, key_cnt, HOSTS_AHOST_V6);
         return get_hosts_all();
     } else if (strcmp("hosts", dbase) == 0) {
         if (keys != NULL)
