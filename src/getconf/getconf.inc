@@ -76,6 +76,7 @@
 
         /* confstr variables */
         GET_CONFSTR_VARIABLE("PATH", _CS_PATH),
+        GET_CONFSTR_VARIABLE("CS_PATH", _CS_PATH),
 
         /* Pathconf variables */
         GET_PATHCONF_VARIABLE("LINK_MAX", _PC_LINK_MAX),
