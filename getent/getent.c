@@ -37,6 +37,13 @@ enum {
     HOSTS_AHOST_V6,
 };
 
+enum {
+    RES_OK = 0,
+    RES_MISSING_ARG_OR_INVALID_DATABASE = 1,
+    RES_KEY_NOT_FOUND = 2,
+    RES_ENUMERATION_NOT_SUPPORTED = 3,
+};
+
 /* From bits/socket_type.h */
 static const char *socktypes[] = {
     "",
@@ -178,12 +185,12 @@ static void print_host_info(const char *key, int host_type)
 static int get_hosts(/*@null@*/ const char **keys, int key_cnt, int host_type)
 {
     if (keys == NULL)
-        return 1;
+        return RES_KEY_NOT_FOUND;
 
     for (; key_cnt-- > 0; keys++)
         print_host_info(*keys, host_type);
 
-    return 0;
+    return RES_OK;
 }
 
 static int get_hosts_all(void)
@@ -204,7 +211,7 @@ static int get_hosts_all(void)
     }
     endhostent();
 
-    return 0;
+    return RES_OK;
 }
 
 static void print_alias_info(struct aliasent *ent)
@@ -223,7 +230,7 @@ static void print_alias_info(struct aliasent *ent)
 static int get_aliases(/*@null@*/ const char **keys, int key_cnt)
 {
     if (keys == NULL)
-        return 1;
+        return RES_KEY_NOT_FOUND;
 
     for (; key_cnt-- > 0; keys++) {
         struct aliasent *ent = NULL;
@@ -235,7 +242,7 @@ static int get_aliases(/*@null@*/ const char **keys, int key_cnt)
     }
     /*@=mustfreefresh@*/
 
-    return 0;
+    return RES_OK;
 }
 
 static int get_aliases_all(void)
@@ -247,7 +254,7 @@ static int get_aliases_all(void)
         print_alias_info(ent);
     endaliasent();
 
-    return 0;
+    return RES_OK;
 }
 
 static int get_ethers(/*@null@*/ const char **keys, int key_cnt)
@@ -255,7 +262,7 @@ static int get_ethers(/*@null@*/ const char **keys, int key_cnt)
     struct ether_addr *addr = NULL;
     struct ether_addr addr_dst;
     if (keys == NULL)
-        return 1;
+        return RES_KEY_NOT_FOUND;
 
     for (; key_cnt-- > 0; keys++) {
         char hostname[NI_MAXHOST];
@@ -266,7 +273,7 @@ static int get_ethers(/*@null@*/ const char **keys, int key_cnt)
             char *addr_str = ether_ntoa(addr);
             /*@-mustfreefresh@*/
             if (addr_str == NULL)
-                return 2;
+                return RES_KEY_NOT_FOUND;
             printf("%s ", addr_str);
         } else {
             /*@=mustfreefresh@*/
@@ -274,7 +281,7 @@ static int get_ethers(/*@null@*/ const char **keys, int key_cnt)
             res = ether_hostton(*keys, &addr_dst);
 
             if (res != 0)
-                return 2;
+                return RES_KEY_NOT_FOUND;
             /*@-mustfreefresh@*/
             printf("%s ", ether_ntoa(&addr_dst));
             /*@=mustfreefresh@*/
@@ -285,13 +292,13 @@ static int get_ethers(/*@null@*/ const char **keys, int key_cnt)
         /*@-compdef@*/
         res = ether_ntohost(hostname, addr);
         if (res != 0)
-            return 2;
+            return RES_KEY_NOT_FOUND;
         /*@-usedef@*/
         printf("%s\n", hostname);
         /*@=compdef@ @=usedef@*/
     }
 
-    return 0;
+    return RES_OK;
 }
 
 static void print_shadow_info(struct spwd *pwd)
@@ -323,7 +330,7 @@ static void print_shadow_info(struct spwd *pwd)
 static int get_shadow(/*@null@*/ const char **keys, int key_cnt)
 {
     if (keys == NULL)
-        return 1;
+        return RES_KEY_NOT_FOUND;
 
     for (; key_cnt-- > 0; keys++) {
         struct spwd *pwd = NULL;
@@ -335,7 +342,7 @@ static int get_shadow(/*@null@*/ const char **keys, int key_cnt)
     }
     /*@=mustfreefresh@*/
 
-    return 0;
+    return RES_OK;
 }
 
 static int get_shadow_all(void)
@@ -347,7 +354,7 @@ static int get_shadow_all(void)
         print_shadow_info(pwd);
     endspent();
 
-    return 0;
+    return RES_OK;
 }
 
 static void print_gshadow_info(struct sgrp *pwd)
@@ -373,7 +380,7 @@ static void print_gshadow_info(struct sgrp *pwd)
 static int get_gshadow(/*@null@*/ const char **keys, int key_cnt)
 {
     if (keys == NULL)
-        return 1;
+        return RES_KEY_NOT_FOUND;
 
     for (; key_cnt-- > 0; keys++) {
         struct sgrp *pwd = NULL;
@@ -385,7 +392,7 @@ static int get_gshadow(/*@null@*/ const char **keys, int key_cnt)
     }
     /*@=mustfreefresh@*/
 
-    return 0;
+    return RES_OK;
 }
 
 static int get_gshadow_all(void)
@@ -397,7 +404,7 @@ static int get_gshadow_all(void)
         print_gshadow_info(pwd);
     endsgent();
 
-    return 0;
+    return RES_OK;
 }
 
 static void print_passwd_info(struct passwd *pwd)
@@ -421,7 +428,7 @@ static void print_passwd_info(struct passwd *pwd)
 static int get_passwd(/*@null@*/ const char **keys, int key_cnt)
 {
     if (keys == NULL)
-        return 1;
+        return RES_KEY_NOT_FOUND;
 
     for (; key_cnt-- > 0; keys++) {
         struct passwd *pwd = NULL;
@@ -433,7 +440,7 @@ static int get_passwd(/*@null@*/ const char **keys, int key_cnt)
     }
     /*@=mustfreefresh@*/
 
-    return 0;
+    return RES_OK;
 }
 
 static int get_passwd_all(void)
@@ -445,7 +452,7 @@ static int get_passwd_all(void)
         print_passwd_info(pwd);
     endpwent();
 
-    return 0;
+    return RES_OK;
 }
 
 static void print_group_info(struct group *grp)
@@ -498,7 +505,7 @@ static int get_group(/*@null@*/ const char **keys, int key_cnt)
     }
     /*@=mustfreefresh@*/
 
-    return 0;
+    return RES_OK;
 }
 
 static int get_group_all(void)
@@ -510,7 +517,7 @@ static int get_group_all(void)
         print_group_info(grp);
     endgrent();
 
-    return 0;
+    return RES_OK;
 }
 
 static void print_network_info(struct netent *net)
@@ -528,7 +535,7 @@ static void print_network_info(struct netent *net)
 static int get_networks(/*@null@*/ const char **keys, int key_cnt)
 {
     if (keys == NULL)
-        return 1;
+        return RES_KEY_NOT_FOUND;
 
     for (; key_cnt-- > 0; keys++) {
         struct netent *net = NULL;
@@ -541,7 +548,7 @@ static int get_networks(/*@null@*/ const char **keys, int key_cnt)
             /* TODO Find better way to get uint32_t network address */
             /*@-compdef@*/
             if (inet_pton(AF_INET, *keys, dst) != 1)
-                return 2;
+                return RES_KEY_NOT_FOUND;
             /*@=compdef@*/
             /*@-usedef@*/
             addr = htonl(*(uint32_t*)dst);
@@ -554,7 +561,7 @@ static int get_networks(/*@null@*/ const char **keys, int key_cnt)
     }
     /*@=mustfreefresh@*/
 
-    return 0;
+    return RES_OK;
 }
 
 static int get_networks_all(void)
@@ -566,7 +573,7 @@ static int get_networks_all(void)
         print_network_info(net);
     endnetent();
 
-    return 0;
+    return RES_OK;
 }
 
 static void print_rpc_info(struct rpcent *rpc)
@@ -589,7 +596,7 @@ static void print_rpc_info(struct rpcent *rpc)
 static int get_rpc(/*@null@*/ const char **keys, int key_cnt)
 {
     if (keys == NULL)
-        return 1;
+        return RES_KEY_NOT_FOUND;
 
     for (; key_cnt-- > 0; keys++) {
         struct rpcent *rpc = NULL;
@@ -606,7 +613,7 @@ static int get_rpc(/*@null@*/ const char **keys, int key_cnt)
     }
     /*@=mustfreefresh@*/
 
-    return 0;
+    return RES_OK;
 }
 
 static int get_rpc_all(void)
@@ -618,7 +625,7 @@ static int get_rpc_all(void)
         print_rpc_info(rpc);
     endrpcent();
 
-    return 0;
+    return RES_OK;
 }
 
 static int read_database(const char *dbase, /*@null@*/ const char **keys, int key_cnt)
@@ -682,7 +689,7 @@ static int read_database(const char *dbase, /*@null@*/ const char **keys, int ke
     }
 
     err("Unknown database: %s\n", dbase);
-    return 1;
+    return RES_MISSING_ARG_OR_INVALID_DATABASE;
 }
 
 int main(int argc, char **argv)
