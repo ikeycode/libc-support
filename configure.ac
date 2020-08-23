@@ -1,4 +1,4 @@
-AC_INIT([libc-support], 1.2.0, [ikey@serpentos.com], [libc-support], [ikey@serpentos.com])
+AC_INIT([libc-support], 0.0.0, [ikey@serpentos.com], [libc-support], [ikey@serpentos.com])
 AM_INIT_AUTOMAKE([-Wno-portability no-dist-gzip dist-xz foreign subdir-objects])
 AC_PROG_CC
 AC_PROG_CC_STDC
