@@ -77,12 +77,14 @@ static void err(const char *msg, ...)
 
 static void usage(const char *name, int help)
 {
-    fprintf(stderr, "Usage: %s database [key]\n", name);
+    fprintf(stderr, "Usage: %s database [key ...]\n", name);
 
     if (help == HELP_FULL) {
         fprintf(stderr, "\nArguments:\n");
-        fprintf(stderr, "  database     Database to query from\n");
-        fprintf(stderr, "  key          Key to query\n");
+        fprintf(stderr, "  -i, --no-idn           Disable IDN (not implemented)\n");
+        fprintf(stderr, "  -s, --service=CONFIG   Service configuration to be used (not implemented)\n");
+        fprintf(stderr, "  database               Database to query from\n");
+        fprintf(stderr, "  key                    Key to query\n");
     }
 
     exit(EXIT_FAILURE);
@@ -812,10 +814,12 @@ int main(int argc, char **argv)
     for (index = 1; index < argc; index++) {
         if (strcmp("-h", argv[index]) == 0)
             usage(argv[0], HELP_FULL);
-        else if (strcmp("-s", argv[index]) == 0 || strcmp("--service", argv[index]) == 0) {
+        else if (strcmp("-s", argv[index]) == 0)
             index++;
             /* Ignored for now */
-        } else if (strcmp("-i", argv[index]) == 0) {
+        else if(strncmp("--service", argv[index], 9) == 0) {
+            /* Ignored for now */
+        } else if (strcmp("-i", argv[index]) == 0 || strcmp("--no-idn", argv[index]) == 0) {
             /* Ignored for now */
         } else if (dbase == NULL)
             dbase = argv[index];
