@@ -25,6 +25,7 @@
 #define _GNU_SOURCE
 
 #include <getopt.h>
+#include <locale.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -263,6 +264,8 @@ int main(int argc, char **argv)
         /* Stash before winding */
         const char *progname = argv[0];
         bool listing = false;
+
+        setlocale(LC_ALL, "");
 
         while (process_loop) {
                 int option_index = 0;
