@@ -14,6 +14,7 @@
 #include <arpa/inet.h>
 #include <aliases.h>
 #include <netinet/ether.h>
+#include <shadow.h>
 
 static const int addr_align_to = 16;
 static const int alias_align_to = 16;
@@ -289,6 +290,62 @@ static int get_ethers(/*@null@*/ const char **keys, int key_cnt)
     return 0;
 }
 
+static void print_shadow_info(struct spwd *pwd)
+{
+    printf("%s", pwd->sp_namp);
+    printf(":%s", pwd->sp_pwdp);
+    printf(":%ld", pwd->sp_lstchg);
+    printf(":");
+    if (pwd->sp_min >= 0)
+        printf("%ld", pwd->sp_min);
+    printf(":");
+    if (pwd->sp_max >= 0)
+        printf("%ld", pwd->sp_max);
+    printf(":");
+    if (pwd->sp_warn >= 0)
+        printf("%ld", pwd->sp_warn);
+    printf(":");
+    if (pwd->sp_inact >= 0)
+        printf(":%ld", pwd->sp_inact);
+    printf(":");
+    if (pwd->sp_expire >= 0)
+        printf(":%ld", pwd->sp_expire);
+    printf(":");
+    if (pwd->sp_flag != (unsigned long)-1)
+        printf(":%lu", pwd->sp_flag);
+    printf("\n");
+}
+
+static int get_shadow(/*@null@*/ const char **keys, int key_cnt)
+{
+    if (keys == NULL)
+        return 1;
+
+    for (; key_cnt-- > 0; keys++) {
+        struct spwd *pwd = NULL;
+
+        /*@-mustfreefresh@*/
+        pwd = getspnam(*keys);
+        if (pwd != NULL)
+            print_shadow_info(pwd);
+    }
+    /*@=mustfreefresh@*/
+
+    return 0;
+}
+
+static int get_shadow_all(void)
+{
+    struct spwd *pwd = NULL;
+
+    setspent();
+    while ((pwd = getspent()) != NULL)
+        print_shadow_info(pwd);
+    endspent();
+
+    return 0;
+}
+
 static int read_database(const char *dbase, /*@null@*/ const char **keys, int key_cnt)
 {
     if (strcmp("ahosts", dbase) == 0) {
@@ -316,6 +373,10 @@ static int read_database(const char *dbase, /*@null@*/ const char **keys, int ke
             return get_ethers(keys, key_cnt);
         printf("Enumeration not supported on ethers\n");
         return 3;
+    } else if (strcmp("shadow", dbase) == 0) {
+        if (keys != NULL)
+            return get_shadow(keys, key_cnt);
+        return get_shadow_all();
     }
 
     err("Unknown database: %s\n", dbase);
