@@ -53,7 +53,7 @@
         GET_SYSCONF_VARIABLE("_POSIX2_LOCALEDEF", _SC_2_LOCALEDEF),
         GET_SYSCONF_VARIABLE("POSIX2_SW_DEV", _SC_2_SW_DEV),
 
-        /* Others spotted from "getconf -a" list */
+        /* Required min/max compile definitions */
         GET_SYSCONF_VARIABLE("ATEXIT_MAX", _SC_ATEXIT_MAX),
         GET_SIGNED_DEFINITION("CHAR_BIT", CHAR_BIT),
         GET_SIGNED_DEFINITION("CHAR_MIN", CHAR_MIN),
@@ -67,8 +67,8 @@
         GET_UNSIGNED_DEFINITION("UINT_MAX", UINT_MAX),
         GET_UNSIGNED_DEFINITION("ULONG_MAX", ULONG_MAX),
         GET_SIGNED_DEFINITION("WORD_BIT", WORD_BIT),
-        GET_SYSCONF_VARIABLE("IOV_MAX", _SC_IOV_MAX),
 
+        /* confstr variables */
         GET_CONFSTR_VARIABLE("PATH", _CS_PATH),
 
         /* Pathconf variables */
