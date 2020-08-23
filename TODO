@@ -1,0 +1,10 @@
+Ikeys TODO list:
+
+ - Takeover from @jorio when confirmation is through
+ - Use clang/llvm static analysis
+ - Enforce Serpent Coding Style (C)
+ - Ensure portability with musl
+ - Add manpages
+ - Centralise buildsystem (meson out the window as meson needs these tools.)
+ - Security testing/validation
+ - Tag.
