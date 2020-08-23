@@ -2,7 +2,7 @@ ACLOCAL_AMFLAGS = -I m4
 
 EXTRA_DIST = ${top_srcdir}/README.md \
 	     ${top_srcdir}/LICENSE   \
-	     ${topsrcdir}/src/getconf/getconf.inc
+	     ${top_srcdir}/src/getconf/getconf.inc
 
 NULL =
 CLEANFILES =
@@ -16,7 +16,8 @@ AM_CFLAGS = -fstack-protector -Wall -pedantic \
         -std=c11
 
 AM_CPPFLAGS = 					 \
-	-I $(top_srcdir)/src
+	-I $(top_srcdir)/src \
+	-I $(top_srcdir)/src/getconf
 
 bin_PROGRAMS = \
 	getconf
