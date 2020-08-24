@@ -20,10 +20,17 @@ AM_CPPFLAGS = 					 \
 	-I $(top_srcdir)/src/getconf
 
 bin_PROGRAMS = \
-	getconf
+	getconf \
+	getent
 
 getconf_SOURCES =			\
 	src/getconf/getconf.c
 
 getconf_CFLAGS =	\
+	$(AM_CFLAGS)
+
+getent_SOURCES =			\
+	src/getent/getent.c
+
+getent_CFLAGS =		\
 	$(AM_CFLAGS)

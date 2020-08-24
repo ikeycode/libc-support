@@ -22,6 +22,8 @@
  * SOFTWARE.
  */
 
+#define _GNU_SOURCE
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdio.h>
@@ -451,7 +453,7 @@ static int get_group(const char **keys, int key_cnt)
                 if (*keys == NULL)
                         continue;
                 if (is_numeric(*keys) == 1)
-                        grp = getgrgid(atoi(*keys));
+                        grp = getgrgid((gid_t)atoi(*keys));
                 else
                         grp = getgrnam(*keys);
                 if (grp != NULL)
