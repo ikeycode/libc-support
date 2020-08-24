@@ -102,14 +102,13 @@ enum {
 
 /* From bits/socket_type.h */
 static const char *socktypes[] = {
-        "",
-        "STREAM",
-        "DGRAM",
-        "RAW",
-        "RDM",
-        "SEQPACKET",
-        "DCCP",
-        [9] = "PACKET"
+        [SOCK_STREAM]    = "STREAM",
+        [SOCK_DGRAM]     = "DGRAM",
+        [SOCK_RAW]       = "RAW",
+        [SOCK_RDM]       = "RDM",
+        [SOCK_SEQPACKET] = "SEQPACKET",
+        [SOCK_DCCP]      = "DCCP",
+        [SOCK_PACKET]    = "PACKET"
 };
 
 static const size_t socktype_size = sizeof(socktypes) / sizeof (const char *);
