@@ -97,6 +97,17 @@ typedef struct getconf_database_config {
 #define DATABASE_CONF(X) { #X, get_ ## X, get_ ## X ## _all }
 #define DATABASE_CONF_HOSTS(X) { #X, get_ ## X, get_hosts_all }
 
+#define GET_ALL(X, single, base, initparm, type) \
+static int get_ ## X ## _all(void)\
+{\
+        struct type *ent = NULL;\
+        set ## base(initparm);\
+        while ((ent = get ## base()) != NULL)\
+                print_ ## single ## _info(ent);\
+        end ## base();\
+        return RES_OK;\
+}
+
 static void err(const char *msg, ...)
 {
         va_list args;
@@ -169,7 +180,7 @@ static void print_sockaddr(struct sockaddr *addr, int family, int align_to, int 
         printf("%s\n", host);
 }
 
-static void print_host_info(const char *key, int host_type)
+static void print_single_host_info(const char *key, int host_type)
 {
         struct addrinfo *info = NULL;
         struct addrinfo hints;
@@ -206,30 +217,22 @@ static int _get_hosts(const char **keys, int key_cnt, int host_type)
                 return RES_KEY_NOT_FOUND;
 
         for (; key_cnt-- > 0; keys++)
-                print_host_info(*keys, host_type);
+                print_single_host_info(*keys, host_type);
 
         return RES_OK;
 }
 
-static int get_hosts_all(void)
+static void print_host_info(struct hostent *ent)
 {
-        struct hostent *ent = NULL;
+        char **aliases = ent->h_aliases;
 
-        sethostent(0);
-        while ((ent = gethostent()) != NULL) {
-                char **aliases = ent->h_aliases;
-
-                print_addr(ent->h_addr_list[0], ent->h_length, addr_align_to);
-                printf("%s", ent->h_name);
-                while (aliases != NULL && *aliases != NULL) {
-                        printf(" %s", *aliases);
-                        aliases++;
-                }
-                printf("\n");
+        print_addr(ent->h_addr_list[0], ent->h_length, addr_align_to);
+        printf("%s", ent->h_name);
+        while (aliases != NULL && *aliases != NULL) {
+                printf(" %s", *aliases);
+                aliases++;
         }
-        endhostent();
-
-        return RES_OK;
+        printf("\n");
 }
 
 static void print_alias_info(struct aliasent *ent)
@@ -257,18 +260,6 @@ static int get_aliases(const char **keys, int key_cnt)
                 if (ent != NULL)
                         print_alias_info(ent);
         }
-
-        return RES_OK;
-}
-
-static int get_aliases_all(void)
-{
-        struct aliasent *ent = NULL;
-
-        setaliasent();
-        while ((ent = getaliasent()) != NULL)
-                print_alias_info(ent);
-        endaliasent();
 
         return RES_OK;
 }
@@ -350,18 +341,6 @@ static int get_shadow(const char **keys, int key_cnt)
         return RES_OK;
 }
 
-static int get_shadow_all(void)
-{
-        struct spwd *pwd = NULL;
-
-        setspent();
-        while ((pwd = getspent()) != NULL)
-                print_shadow_info(pwd);
-        endspent();
-
-        return RES_OK;
-}
-
 static void print_gshadow_info(struct sgrp *pwd)
 {
         char **memb = NULL;
@@ -398,19 +377,7 @@ static int get_gshadow(const char **keys, int key_cnt)
         return RES_OK;
 }
 
-static int get_gshadow_all(void)
-{
-        struct sgrp *pwd = NULL;
-
-        setsgent();
-        while ((pwd = getsgent()) != NULL)
-                print_gshadow_info(pwd);
-        endsgent();
-
-        return RES_OK;
-}
-
-static void print_passwd_info(struct passwd *pwd)
+static void print_password_info(struct passwd *pwd)
 {
         printf("%s", pwd->pw_name);
         printf(":%s", pwd->pw_passwd);
@@ -438,20 +405,8 @@ static int get_password(const char **keys, int key_cnt)
 
                 pwd = getpwnam(*keys);
                 if (pwd != NULL)
-                        print_passwd_info(pwd);
+                        print_password_info(pwd);
         }
-
-        return RES_OK;
-}
-
-static int get_password_all(void)
-{
-        struct passwd *pwd = NULL;
-
-        setpwent();
-        while ((pwd = getpwent()) != NULL)
-                print_passwd_info(pwd);
-        endpwent();
 
         return RES_OK;
 }
@@ -505,18 +460,6 @@ static int get_group(const char **keys, int key_cnt)
         return RES_OK;
 }
 
-static int get_group_all(void)
-{
-        struct group *grp = NULL;
-
-        setgrent();
-        while ((grp = getgrent()) != NULL)
-                print_group_info(grp);
-        endgrent();
-
-        return RES_OK;
-}
-
 static void print_network_info(struct netent *net)
 {
         unsigned char *tmp = (unsigned char*)&net->n_net;
@@ -549,18 +492,6 @@ static int get_networks(const char **keys, int key_cnt)
                 if (net != NULL)
                         print_network_info(net);
         }
-
-        return RES_OK;
-}
-
-static int get_networks_all(void)
-{
-        struct netent *net = NULL;
-
-        setnetent(1);
-        while ((net = getnetent()) != NULL)
-                print_network_info(net);
-        endnetent();
 
         return RES_OK;
 }
@@ -603,18 +534,6 @@ static int get_rpc(const char **keys, int key_cnt)
         return RES_OK;
 }
 
-static int get_rpc_all(void)
-{
-        struct rpcent *rpc = NULL;
-
-        setrpcent(1);
-        while ((rpc = getrpcent()) != NULL)
-                print_rpc_info(rpc);
-        endrpcent();
-
-        return RES_OK;
-}
-
 static void print_protocol_info(struct protoent *ent)
 {
         char **alias = NULL;
@@ -650,18 +569,6 @@ static int get_protocols(const char **keys, int key_cnt)
         return RES_OK;
 }
 
-static int get_protocols_all(void)
-{
-        struct protoent *ent = NULL;
-
-        setprotoent(1);
-        while ((ent = getprotoent()) != NULL)
-                print_protocol_info(ent);
-        endprotoent();
-
-        return RES_OK;
-}
-
 static void print_service_info(struct servent *ent)
 {
         char **alias = NULL;
@@ -693,18 +600,6 @@ static int get_services(const char **keys, int key_cnt)
                 if (ent != NULL)
                         print_service_info(ent);
         }
-
-        return RES_OK;
-}
-
-static int get_services_all(void)
-{
-        struct servent *ent = NULL;
-
-        setservent(1);
-        while ((ent = getservent()) != NULL)
-                print_service_info(ent);
-        endservent();
 
         return RES_OK;
 }
@@ -765,6 +660,18 @@ static int no_enum(const char *db)
         printf("Enumeration not supported on %s\n", db);
         return RES_ENUMERATION_NOT_SUPPORTED;
 }
+
+GET_ALL(aliases, alias, aliasent, ,aliasent)
+GET_ALL(services, service, servent, 1, servent)
+GET_ALL(group, group, grent, , group)
+GET_ALL(gshadow, gshadow, sgent, , sgrp)
+GET_ALL(hosts, host, hostent, 1, hostent)
+GET_ALL(networks, network, netent, 1, netent)
+GET_ALL(password, password, pwent, , passwd)
+GET_ALL(protocols, protocol, protoent, 1, protoent)
+GET_ALL(rpc, rpc, rpcent, 1, rpcent)
+GET_ALL(shadow, shadow, spent, , spwd)
+
 #define NO_ENUM_ALL_FOR(X) \
 static int get_ ## X ## _all(void)\
 {\
