@@ -94,19 +94,19 @@ static const char *socktypes[] = {
 static const size_t socktype_size = sizeof(socktypes) / sizeof (const char *);
 
 typedef int (*get_func_t)(const char **keys, int key_cnt);
-typedef int (*get_all_func_t)(void);
+typedef int (*enum_func_t)(void);
 
 typedef struct getconf_database_config {
         const char *name;
         get_func_t get;
-        get_all_func_t get_all;
+        enum_func_t enum_all;
 } getconf_database_config_t;
 
-#define DATABASE_CONF(X) { #X, get_ ## X, get_ ## X ## _all }
-#define DATABASE_CONF_HOSTS(X) { #X, get_ ## X, get_hosts_all }
+#define DATABASE_CONF(X) { #X, get_ ## X, enum_ ## X ## _all }
+#define DATABASE_CONF_HOSTS(X) { #X, get_ ## X, enum_hosts_all }
 
-#define GET_ALL(X, single, base, initparm, type) \
-static int get_ ## X ## _all(void)\
+#define ENUM_ALL(X, single, base, initparm, type)\
+static int enum_ ## X ## _all(void)\
 {\
         struct type *ent = NULL;\
         set ## base(initparm);\
@@ -116,8 +116,22 @@ static int get_ ## X ## _all(void)\
         return RES_OK;\
 }
 
-#define NO_ENUM_ALL_FOR(X) \
-static int get_ ## X ## _all(void)\
+#define GET_SIMPLE(X, single, getfunc, type)\
+static int get_ ## X(const char **keys, int key_cnt)\
+{\
+        if (keys == NULL)\
+                return RES_KEY_NOT_FOUND;\
+        for (; key_cnt-- > 0; keys++) {\
+                struct type *ent = NULL;\
+                ent = getfunc(*keys);\
+                if (ent != NULL)\
+                        print_ ## single ## _info(ent);\
+        }\
+        return RES_OK;\
+}
+
+#define NO_ENUM_ALL_FOR(X)\
+static int enum_ ## X ## _all(void)\
 {\
         return no_enum(#X);\
 }
@@ -247,22 +261,6 @@ static void print_alias_info(struct aliasent *ent)
         printf("\n");
 }
 
-static int get_aliases(const char **keys, int key_cnt)
-{
-        if (keys == NULL)
-                return RES_KEY_NOT_FOUND;
-
-        for (; key_cnt-- > 0; keys++) {
-                struct aliasent *ent = NULL;
-
-                ent = getaliasbyname(*keys);
-                if (ent != NULL)
-                        print_alias_info(ent);
-        }
-
-        return RES_OK;
-}
-
 static int get_ethers(const char **keys, int key_cnt)
 {
         struct ether_addr *addr = NULL;
@@ -321,22 +319,6 @@ static void print_shadow_info(struct spwd *pwd)
         printf("\n");
 }
 
-static int get_shadow(const char **keys, int key_cnt)
-{
-        if (keys == NULL)
-                return RES_KEY_NOT_FOUND;
-
-        for (; key_cnt-- > 0; keys++) {
-                struct spwd *pwd = NULL;
-
-                pwd = getspnam(*keys);
-                if (pwd != NULL)
-                        print_shadow_info(pwd);
-        }
-
-        return RES_OK;
-}
-
 static void print_gshadow_info(struct sgrp *pwd)
 {
         char **memb = NULL;
@@ -355,22 +337,6 @@ static void print_gshadow_info(struct sgrp *pwd)
         printf("\n");
 }
 
-static int get_gshadow(const char **keys, int key_cnt)
-{
-        if (keys == NULL)
-                return RES_KEY_NOT_FOUND;
-
-        for (; key_cnt-- > 0; keys++) {
-                struct sgrp *pwd = NULL;
-
-                pwd = getsgnam(*keys);
-                if (pwd != NULL)
-                        print_gshadow_info(pwd);
-        }
-
-        return RES_OK;
-}
-
 static void print_password_info(struct passwd *pwd)
 {
         printf("%s:%s:%u:%u:", pwd->pw_name, pwd->pw_passwd, pwd->pw_uid, pwd->pw_gid);
@@ -383,22 +349,6 @@ static void print_password_info(struct passwd *pwd)
         if (pwd->pw_shell != NULL)
                 printf("%s", pwd->pw_shell);
         printf("\n");
-}
-
-static int get_password(const char **keys, int key_cnt)
-{
-        if (keys == NULL)
-                return RES_KEY_NOT_FOUND;
-
-        for (; key_cnt-- > 0; keys++) {
-                struct passwd *pwd = NULL;
-
-                pwd = getpwnam(*keys);
-                if (pwd != NULL)
-                        print_password_info(pwd);
-        }
-
-        return RES_OK;
 }
 
 static void print_group_info(struct group *grp)
@@ -697,16 +647,20 @@ static int no_enum(const char *db)
         return RES_ENUMERATION_NOT_SUPPORTED;
 }
 
-GET_ALL(aliases, alias, aliasent, ,aliasent)
-GET_ALL(services, service, servent, 1, servent)
-GET_ALL(group, group, grent, , group)
-GET_ALL(gshadow, gshadow, sgent, , sgrp)
-GET_ALL(hosts, host, hostent, 1, hostent)
-GET_ALL(networks, network, netent, 1, netent)
-GET_ALL(password, password, pwent, , passwd)
-GET_ALL(protocols, protocol, protoent, 1, protoent)
-GET_ALL(rpc, rpc, rpcent, 1, rpcent)
-GET_ALL(shadow, shadow, spent, , spwd)
+ENUM_ALL(aliases, alias, aliasent, ,aliasent)
+GET_SIMPLE(aliases, alias, getaliasbyname, aliasent)
+ENUM_ALL(services, service, servent, 1, servent)
+ENUM_ALL(group, group, grent, , group)
+ENUM_ALL(gshadow, gshadow, sgent, , sgrp)
+GET_SIMPLE(gshadow, gshadow, getsgnam, sgrp)
+ENUM_ALL(hosts, host, hostent, 1, hostent)
+ENUM_ALL(networks, network, netent, 1, netent)
+ENUM_ALL(password, password, pwent, , passwd)
+GET_SIMPLE(password, password, getpwnam, passwd)
+ENUM_ALL(protocols, protocol, protoent, 1, protoent)
+ENUM_ALL(rpc, rpc, rpcent, 1, rpcent)
+ENUM_ALL(shadow, shadow, spent, , spwd)
+GET_SIMPLE(shadow, shadow, getspnam, spwd)
 
 NO_ENUM_ALL_FOR(ethers)
 NO_ENUM_ALL_FOR(initgroups)
@@ -741,7 +695,7 @@ static int read_database(const char *dbase, const char **keys, int key_cnt)
                         continue;
                 if (keys != NULL)
                         return databases[i].get(keys, key_cnt);
-                return databases[i].get_all();
+                return databases[i].enum_all();
         }
 
         err("Unknown database: %s\n", dbase);

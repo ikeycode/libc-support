@@ -12,6 +12,7 @@ stamp-*
 *.dirstamp
 /install-sh
 /getconf
+/getent
 /missing
 /autom4te.cache
 Makefile
