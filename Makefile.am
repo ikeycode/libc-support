@@ -17,7 +17,8 @@ AM_CFLAGS = -fstack-protector -Wall -pedantic \
 
 AM_CPPFLAGS = 					 \
 	-I $(top_srcdir)/src \
-	-I $(top_srcdir)/src/getconf
+	-I $(top_srcdir)/src/getconf \
+	-I $(top_srcdir)/src/getent
 
 bin_PROGRAMS = \
 	getconf \

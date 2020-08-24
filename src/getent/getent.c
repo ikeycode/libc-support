@@ -26,6 +26,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stddef.h>
@@ -40,6 +41,10 @@
 #include <grp.h>
 #include <pwd.h>
 #include <gshadow.h>
+#include <getopt.h>
+#include <locale.h>
+
+#include "config.h"
 
 static const int addr_align_to = 16;
 static const int alias_align_to = 16;
@@ -118,21 +123,6 @@ static void err(const char *msg, ...)
         va_start(args, msg);
         (void)vfprintf(stderr, msg, args);
         va_end(args);
-
-        exit(EXIT_FAILURE);
-}
-
-static void usage(const char *name, int help)
-{
-        fprintf(stderr, "Usage: %s database [key ...]\n", name);
-
-        if (help == HELP_FULL) {
-                fprintf(stderr, "\nArguments:\n");
-                fprintf(stderr, "  -i, --no-idn           Disable IDN (not implemented)\n");
-                fprintf(stderr, "  -s, --service=CONFIG   Service configuration to be used (not implemented)\n");
-                fprintf(stderr, "  database               Database to query from\n");
-                fprintf(stderr, "  key                    Key to query\n");
-        }
 
         exit(EXIT_FAILURE);
 }
@@ -770,36 +760,113 @@ static int read_database(const char *dbase, const char **keys, int key_cnt)
         return RES_MISSING_ARG_OR_INVALID_DATABASE;
 }
 
+/**
+ * Program arguments.
+ */
+static struct option prog_opts[] = {
+        { "service", optional_argument, 0, 's' },
+        {
+            "version",
+            no_argument,
+            NULL,
+            'V',
+        },
+        { "help", no_argument, NULL, 'h' },
+        { NULL, 0, NULL, 0 },
+};
+
+/**
+ * Print correct CLI usage of the tool
+ */
+static void printUsage(const char *progname)
+{
+        fprintf(stderr, "Usage: %s [-i] [-s config] database [key ...]\n", progname);
+}
+
+/**
+ * Pretty-print a help message
+ */
+static void printHelp(const char *progname)
+{
+        printUsage(progname);
+
+        fputs("    -i, --no-idn                         Disable IDN encoding for lookups\n",
+              stderr);
+        fputs("    -s, --service=CONFIG                 Service configuration to be used\n",
+              stderr);
+        fputs("    -V, --version                        Display program version and quit\n",
+              stdout);
+}
+
+/**
+ * Print our version information
+ */
+static void printVersion(void)
+{
+        fputs("getent version " PACKAGE_VERSION " \n\n", stdout);
+        fputs("Copyright © 2020 Serpent OS Developers\n", stdout);
+        fputs("Part of the libc-support project\n", stdout);
+        fputs("Available under the terms of the MIT license\n", stdout);
+}
+
 int main(int argc, char **argv)
 {
         const char *dbase = NULL;
         const char **keys = NULL;
-        int index = 1;
+        int opt = 0;
+        bool process_loop = true;
+        __attribute__((unused)) bool idn = true;
+        __attribute__((unused)) const char *service = NULL;
+        const char *progname = argv[0];
 
-        for (index = 1; index < argc; index++) {
-                if (strcmp("-h", argv[index]) == 0)
-                        usage(argv[0], HELP_FULL);
-                else if (strcmp("-s", argv[index]) == 0)
-                        index++;
-                /* Ignored for now */
-                else if(strncmp("--service", argv[index], 9) == 0) {
-                        /* Ignored for now */
-                } else if (strcmp("-i", argv[index]) == 0 || strcmp("--no-idn", argv[index]) == 0) {
-                        /* Ignored for now */
-                } else if (dbase == NULL)
-                        dbase = argv[index];
-                else if (keys == NULL) {
-                        keys = (const char **)&argv[index];
+        setlocale(LC_ALL, "");
+
+        while (process_loop) {
+                int option_index = 0;
+                opt = getopt_long(argc, argv, "ahVs:i", prog_opts, &option_index);
+
+                switch (opt) {
+                case 'h':
+                        printHelp(progname);
+                        return EXIT_SUCCESS;
+                        break;
+                case 'V':
+                        printVersion();
+                        return EXIT_SUCCESS;
+                case -1:
+                        process_loop = false;
+                        break;
+                case '?':
+                        printUsage(progname);
+                        return EXIT_FAILURE;
+                case 'i':
+                        idn = false;
+                        break;
+                case 's':
+                        service = optarg;
+                        break;
+                default:
                         break;
                 }
-                else
-                        err("Unknown parameter: %s\n", argv[index]);
+
+                if (!process_loop) {
+                        break;
+                }
         }
 
-        if (dbase == NULL)
-                usage(argv[0], HELP_SHORT);
+        argc -= optind;
+        argv += optind;
 
-        return read_database(dbase, keys, argc - index);
+        dbase = *argv;
+        --argc;
+        if (argc > 0)
+                keys = (const char**)++argv;
+
+        if (dbase == NULL) {
+                printUsage(progname);
+                return RES_MISSING_ARG_OR_INVALID_DATABASE;
+        }
+        return read_database(dbase, keys, argc);
 }
 
 /*
