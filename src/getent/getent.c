@@ -116,6 +116,12 @@ static int get_ ## X ## _all(void)\
         return RES_OK;\
 }
 
+#define NO_ENUM_ALL_FOR(X) \
+static int get_ ## X ## _all(void)\
+{\
+        return no_enum(#X);\
+}
+
 static void err(const char *msg, ...)
 {
         va_list args;
@@ -169,7 +175,7 @@ static void print_sockaddr(struct sockaddr *addr, int family, int align_to, int 
                 return;
         }
         (void)getnameinfo(addr, family == AF_INET ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), host, NI_MAXHOST, NULL, 0, 0);
-        host[NI_MAXHOST- 1] = 0;
+        host[NI_MAXHOST - 1] = 0;
         printf("%s\n", host);
 }
 
@@ -191,10 +197,10 @@ static void print_single_host_info(const char *key, int host_type)
                 return;
 
         if (host_type == HOSTS_AHOST || host_type == HOSTS_AHOST_V4 || host_type == HOSTS_AHOST_V6) {
-                struct addrinfo *tmp = info;
+                struct addrinfo *tmp = NULL;
                 int print_host = 1;
 
-                for (; tmp != NULL; tmp = tmp->ai_next) {
+                for (tmp = info; tmp != NULL; tmp = tmp->ai_next) {
                         print_sockaddr(tmp->ai_addr, tmp->ai_family, addr_align_to, tmp->ai_socktype, print_host);
                         print_host = 0;
                 }
@@ -294,10 +300,7 @@ static int get_ethers(const char **keys, int key_cnt)
 
 static void print_shadow_info(struct spwd *pwd)
 {
-        printf("%s", pwd->sp_namp);
-        printf(":%s", pwd->sp_pwdp);
-        printf(":%ld", pwd->sp_lstchg);
-        printf(":");
+        printf("%s:%s:%ld:", pwd->sp_namp, pwd->sp_pwdp, pwd->sp_lstchg);
         if (pwd->sp_min >= 0)
                 printf("%ld", pwd->sp_min);
         printf(":");
@@ -308,13 +311,13 @@ static void print_shadow_info(struct spwd *pwd)
                 printf("%ld", pwd->sp_warn);
         printf(":");
         if (pwd->sp_inact >= 0)
-                printf(":%ld", pwd->sp_inact);
+                printf("%ld", pwd->sp_inact);
         printf(":");
         if (pwd->sp_expire >= 0)
-                printf(":%ld", pwd->sp_expire);
+                printf("%ld", pwd->sp_expire);
         printf(":");
         if (pwd->sp_flag != (unsigned long)-1)
-                printf(":%lu", pwd->sp_flag);
+                printf("%lu", pwd->sp_flag);
         printf("\n");
 }
 
@@ -339,9 +342,7 @@ static void print_gshadow_info(struct sgrp *pwd)
         char **memb = NULL;
         int first = 1;
 
-        printf("%s", pwd->sg_namp);
-        printf(":%s", pwd->sg_passwd);
-        printf(":");
+        printf("%s:%s:", pwd->sg_namp, pwd->sg_passwd);
         for (first = 1, memb = pwd->sg_adm; *memb != NULL; memb++) {
                 printf("%s%s", first == 0 ? "," : "", *memb);
                 first = 0;
@@ -372,11 +373,7 @@ static int get_gshadow(const char **keys, int key_cnt)
 
 static void print_password_info(struct passwd *pwd)
 {
-        printf("%s", pwd->pw_name);
-        printf(":%s", pwd->pw_passwd);
-        printf(":%u", pwd->pw_uid);
-        printf(":%u", pwd->pw_gid);
-        printf(":");
+        printf("%s:%s:%u:%u:", pwd->pw_name, pwd->pw_passwd, pwd->pw_uid, pwd->pw_gid);
         if (pwd->pw_gecos != NULL)
                 printf("%s", pwd->pw_gecos);
         printf(":");
@@ -409,11 +406,7 @@ static void print_group_info(struct group *grp)
         char **memb = NULL;
         int first = 1;
 
-        printf("%s", grp->gr_name);
-        printf(":%s", grp->gr_passwd);
-        printf(":");
-        printf("%u", grp->gr_gid);
-        printf(":");
+        printf("%s:%s:%u:", grp->gr_name, grp->gr_passwd, grp->gr_gid);
         for (memb = grp->gr_mem; *memb != NULL; memb++) {
                 printf("%s%s", first == 0 ? "," : "", *memb);
                 first = 0;
@@ -425,6 +418,7 @@ static int is_numeric(const char *v)
 {
         if (v == NULL)
                 return 1;
+
         for (; v != NULL && *v != (char)0; v++)
                 if (*v < '0' || *v > '9')
                         return 0;
@@ -435,7 +429,7 @@ static int is_numeric(const char *v)
 static int get_group(const char **keys, int key_cnt)
 {
         if (keys == NULL)
-                return 1;
+                return RES_KEY_NOT_FOUND;
 
         for (; key_cnt-- > 0; keys++) {
                 struct group *grp = NULL;
@@ -713,12 +707,6 @@ GET_ALL(password, password, pwent, , passwd)
 GET_ALL(protocols, protocol, protoent, 1, protoent)
 GET_ALL(rpc, rpc, rpcent, 1, rpcent)
 GET_ALL(shadow, shadow, spent, , spwd)
-
-#define NO_ENUM_ALL_FOR(X) \
-static int get_ ## X ## _all(void)\
-{\
-        return no_enum(#X);\
-}
 
 NO_ENUM_ALL_FOR(ethers)
 NO_ENUM_ALL_FOR(initgroups)
