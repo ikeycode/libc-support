@@ -105,18 +105,18 @@ typedef struct getconf_database_config {
 #define DATABASE_CONF(X) { #X, get_ ## X, enum_ ## X ## _all }
 #define DATABASE_CONF_HOSTS(X) { #X, get_ ## X, enum_hosts_all }
 
-#define ENUM_ALL(X, single, base, initparm, type)\
+#define ENUM_ALL(X, base, initparm, type)\
 static int enum_ ## X ## _all(void)\
 {\
         struct type *ent = NULL;\
         set ## base(initparm);\
         while ((ent = get ## base()) != NULL)\
-                print_ ## single ## _info(ent);\
+                print_ ## type ## _info(ent);\
         end ## base();\
         return RES_OK;\
 }
 
-#define GET_SIMPLE(X, single, getfunc, type)\
+#define GET_SIMPLE(X, getfunc, type)\
 static int get_ ## X(const char **keys, int key_cnt)\
 {\
         if (keys == NULL)\
@@ -125,10 +125,30 @@ static int get_ ## X(const char **keys, int key_cnt)\
                 struct type *ent = NULL;\
                 ent = getfunc(*keys);\
                 if (ent != NULL)\
-                        print_ ## single ## _info(ent);\
+                        print_ ## type ## _info(ent);\
         }\
         return RES_OK;\
 }
+
+#define GET_NUMERIC_CAST(X, getfunc, getnumericfunc, type, numcast)\
+static int get_ ## X(const char **keys, int key_cnt)\
+{\
+        if (keys == NULL)\
+                return RES_KEY_NOT_FOUND;\
+        for (; key_cnt-- > 0; keys++) {\
+                struct type *ent = NULL;\
+                if (*keys == NULL)\
+                        continue;\
+                if (is_numeric(*keys) == 1)\
+                        ent = getnumericfunc((numcast)atoi(*keys));\
+                else\
+                        ent = getfunc(*keys);\
+                if (ent != NULL)\
+                        print_ ## type ## _info(ent);\
+        }\
+        return RES_OK;\
+}
+#define GET_NUMERIC(X, getfunc, getnumericfunc, type) GET_NUMERIC_CAST(X, getfunc, getnumericfunc, type, int)
 
 #define NO_ENUM_ALL_FOR(X)\
 static int enum_ ## X ## _all(void)\
@@ -235,7 +255,7 @@ static int _get_hosts(const char **keys, int key_cnt, int host_type)
         return RES_OK;
 }
 
-static void print_host_info(struct hostent *ent)
+static void print_hostent_info(struct hostent *ent)
 {
         char **aliases = ent->h_aliases;
 
@@ -248,7 +268,7 @@ static void print_host_info(struct hostent *ent)
         printf("\n");
 }
 
-static void print_alias_info(struct aliasent *ent)
+static void print_aliasent_info(struct aliasent *ent)
 {
         size_t i;
         int cnt = 0;
@@ -296,7 +316,7 @@ static int get_ethers(const char **keys, int key_cnt)
         return RES_OK;
 }
 
-static void print_shadow_info(struct spwd *pwd)
+static void print_spwd_info(struct spwd *pwd)
 {
         printf("%s:%s:%ld:", pwd->sp_namp, pwd->sp_pwdp, pwd->sp_lstchg);
         if (pwd->sp_min >= 0)
@@ -319,7 +339,7 @@ static void print_shadow_info(struct spwd *pwd)
         printf("\n");
 }
 
-static void print_gshadow_info(struct sgrp *pwd)
+static void print_sgrp_info(struct sgrp *pwd)
 {
         char **memb = NULL;
         int first = 1;
@@ -337,7 +357,7 @@ static void print_gshadow_info(struct sgrp *pwd)
         printf("\n");
 }
 
-static void print_password_info(struct passwd *pwd)
+static void print_passwd_info(struct passwd *pwd)
 {
         printf("%s:%s:%u:%u:", pwd->pw_name, pwd->pw_passwd, pwd->pw_uid, pwd->pw_gid);
         if (pwd->pw_gecos != NULL)
@@ -376,28 +396,7 @@ static int is_numeric(const char *v)
         return 1;
 }
 
-static int get_group(const char **keys, int key_cnt)
-{
-        if (keys == NULL)
-                return RES_KEY_NOT_FOUND;
-
-        for (; key_cnt-- > 0; keys++) {
-                struct group *grp = NULL;
-
-                if (*keys == NULL)
-                        continue;
-                if (is_numeric(*keys) == 1)
-                        grp = getgrgid((gid_t)atoi(*keys));
-                else
-                        grp = getgrnam(*keys);
-                if (grp != NULL)
-                        print_group_info(grp);
-        }
-
-        return RES_OK;
-}
-
-static void print_network_info(struct netent *net)
+static void print_netent_info(struct netent *net)
 {
         unsigned char *tmp = (unsigned char*)&net->n_net;
         int cnt = 0;
@@ -427,13 +426,13 @@ static int get_networks(const char **keys, int key_cnt)
                         net = getnetbyaddr(addr, AF_INET);
                 }
                 if (net != NULL)
-                        print_network_info(net);
+                        print_netent_info(net);
         }
 
         return RES_OK;
 }
 
-static void print_rpc_info(struct rpcent *rpc)
+static void print_rpcent_info(struct rpcent *rpc)
 {
         char **alias = NULL;
         int cnt = 0;
@@ -450,28 +449,7 @@ static void print_rpc_info(struct rpcent *rpc)
         printf("\n");
 }
 
-static int get_rpc(const char **keys, int key_cnt)
-{
-        if (keys == NULL)
-                return RES_KEY_NOT_FOUND;
-
-        for (; key_cnt-- > 0; keys++) {
-                struct rpcent *rpc = NULL;
-
-                if (*keys == NULL)
-                        continue;
-                if (is_numeric(*keys) == 1)
-                        rpc = getrpcbynumber(atoi(*keys));
-                else
-                        rpc = getrpcbyname(*keys);
-                if (rpc != NULL)
-                        print_rpc_info(rpc);
-        }
-
-        return RES_OK;
-}
-
-static void print_protocol_info(struct protoent *ent)
+static void print_protoent_info(struct protoent *ent)
 {
         char **alias = NULL;
         int cnt = 0;
@@ -485,28 +463,7 @@ static void print_protocol_info(struct protoent *ent)
         printf("\n");
 }
 
-static int get_protocols(const char **keys, int key_cnt)
-{
-        if (keys == NULL)
-                return RES_KEY_NOT_FOUND;
-
-        for (; key_cnt-- > 0; keys++) {
-                struct protoent *ent = NULL;
-
-                if (*keys == NULL)
-                        continue;
-                if (is_numeric(*keys) == 1)
-                        ent = getprotobynumber(atoi(*keys));
-                else
-                        ent = getprotobyname(*keys);
-                if (ent != NULL)
-                        print_protocol_info(ent);
-        }
-
-        return RES_OK;
-}
-
-static void print_service_info(struct servent *ent)
+static void print_servent_info(struct servent *ent)
 {
         char **alias = NULL;
         int cnt = 0;
@@ -535,7 +492,7 @@ static int get_services(const char **keys, int key_cnt)
                 else
                         ent = getservbyname(*keys, NULL);
                 if (ent != NULL)
-                        print_service_info(ent);
+                        print_servent_info(ent);
         }
 
         return RES_OK;
@@ -647,20 +604,24 @@ static int no_enum(const char *db)
         return RES_ENUMERATION_NOT_SUPPORTED;
 }
 
-ENUM_ALL(aliases, alias, aliasent, ,aliasent)
-GET_SIMPLE(aliases, alias, getaliasbyname, aliasent)
-ENUM_ALL(services, service, servent, 1, servent)
-ENUM_ALL(group, group, grent, , group)
-ENUM_ALL(gshadow, gshadow, sgent, , sgrp)
-GET_SIMPLE(gshadow, gshadow, getsgnam, sgrp)
-ENUM_ALL(hosts, host, hostent, 1, hostent)
-ENUM_ALL(networks, network, netent, 1, netent)
-ENUM_ALL(password, password, pwent, , passwd)
-GET_SIMPLE(password, password, getpwnam, passwd)
-ENUM_ALL(protocols, protocol, protoent, 1, protoent)
-ENUM_ALL(rpc, rpc, rpcent, 1, rpcent)
-ENUM_ALL(shadow, shadow, spent, , spwd)
-GET_SIMPLE(shadow, shadow, getspnam, spwd)
+ENUM_ALL(aliases, aliasent, ,aliasent)
+ENUM_ALL(services, servent, 1, servent)
+ENUM_ALL(group, grent, , group)
+ENUM_ALL(gshadow, sgent, , sgrp)
+ENUM_ALL(hosts, hostent, 1, hostent)
+ENUM_ALL(networks, netent, 1, netent)
+ENUM_ALL(password, pwent, , passwd)
+ENUM_ALL(protocols, protoent, 1, protoent)
+ENUM_ALL(rpc, rpcent, 1, rpcent)
+ENUM_ALL(shadow, spent, , spwd)
+
+GET_SIMPLE(aliases, getaliasbyname, aliasent)
+GET_NUMERIC_CAST(group, getgrnam, getgrgid, group, gid_t)
+GET_SIMPLE(gshadow, getsgnam, sgrp)
+GET_SIMPLE(password, getpwnam, passwd)
+GET_NUMERIC(protocols, getprotobyname, getprotobynumber, protoent)
+GET_NUMERIC(rpc, getrpcbyname, getrpcbynumber, rpcent)
+GET_SIMPLE(shadow, getspnam, spwd)
 
 NO_ENUM_ALL_FOR(ethers)
 NO_ENUM_ALL_FOR(initgroups)
