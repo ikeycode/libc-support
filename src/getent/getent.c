@@ -35,19 +35,33 @@
 #include <strings.h>
 #include <netdb.h>
 #include <arpa/inet.h>
-#include <aliases.h>
 #include <netinet/ether.h>
 #include <shadow.h>
 #include <grp.h>
 #include <pwd.h>
-#include <gshadow.h>
 #include <getopt.h>
 #include <locale.h>
 
 #include "config.h"
 
+#ifndef HAVE_ALIASES
+#define HAVE_ALIASES 0
+#endif
+#ifndef HAVE_GSHADOW
+#define HAVE_GSHADOW 0
+#endif
+
+#if HAVE_ALIASES
+#include <aliases.h>
+#endif
+#if HAVE_GSHADOW
+#include <gshadow.h>
+#endif
+
 static const int addr_align_to = 16;
+#if HAVE_ALIASES
 static const int alias_align_to = 16;
+#endif
 static const int network_align_to = 23;
 static const int rpc_align_to = 17;
 static const int proto_align_to = 23;
@@ -268,6 +282,7 @@ static void print_hostent_info(struct hostent *ent)
         printf("\n");
 }
 
+#if HAVE_ALIASES
 static void print_aliasent_info(struct aliasent *ent)
 {
         size_t i;
@@ -280,6 +295,7 @@ static void print_aliasent_info(struct aliasent *ent)
         }
         printf("\n");
 }
+#endif
 
 static int get_ethers(const char **keys, int key_cnt)
 {
@@ -339,6 +355,7 @@ static void print_spwd_info(struct spwd *pwd)
         printf("\n");
 }
 
+#if HAVE_GSHADOW
 static void print_sgrp_info(struct sgrp *pwd)
 {
         char **memb = NULL;
@@ -356,6 +373,7 @@ static void print_sgrp_info(struct sgrp *pwd)
         }
         printf("\n");
 }
+#endif
 
 static void print_passwd_info(struct passwd *pwd)
 {
@@ -604,10 +622,14 @@ static int no_enum(const char *db)
         return RES_ENUMERATION_NOT_SUPPORTED;
 }
 
+#if HAVE_ALIASES
 ENUM_ALL(aliases, aliasent, ,aliasent)
+#endif
 ENUM_ALL(services, servent, 1, servent)
 ENUM_ALL(group, grent, , group)
+#if HAVE_GSHADOW
 ENUM_ALL(gshadow, sgent, , sgrp)
+#endif
 ENUM_ALL(hosts, hostent, 1, hostent)
 ENUM_ALL(networks, netent, 1, netent)
 ENUM_ALL(password, pwent, , passwd)
@@ -615,9 +637,13 @@ ENUM_ALL(protocols, protoent, 1, protoent)
 ENUM_ALL(rpc, rpcent, 1, rpcent)
 ENUM_ALL(shadow, spent, , spwd)
 
+#if HAVE_ALIASES
 GET_SIMPLE(aliases, getaliasbyname, aliasent)
+#endif
 GET_NUMERIC_CAST(group, getgrnam, getgrgid, group, gid_t)
+#if HAVE_GSHADOW
 GET_SIMPLE(gshadow, getsgnam, sgrp)
+#endif
 GET_SIMPLE(password, getpwnam, passwd)
 GET_NUMERIC(protocols, getprotobyname, getprotobynumber, protoent)
 GET_NUMERIC(rpc, getrpcbyname, getrpcbynumber, rpcent)
@@ -632,10 +658,14 @@ static const getconf_database_config_t databases[] = {
         DATABASE_CONF_HOSTS(ahostsv4),
         DATABASE_CONF_HOSTS(ahostsv6),
         DATABASE_CONF_HOSTS(hosts),
+#if HAVE_ALIASES
         DATABASE_CONF(aliases),
+#endif
         DATABASE_CONF(ethers),
         DATABASE_CONF(group),
+#if HAVE_GSHADOW
         DATABASE_CONF(gshadow),
+#endif
         DATABASE_CONF(initgroups),
         DATABASE_CONF(netgroup),
         DATABASE_CONF(networks),
