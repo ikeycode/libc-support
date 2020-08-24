@@ -53,6 +53,9 @@
 #ifndef HAVE_RPC
 #define HAVE_RPC 0
 #endif
+#ifndef HAVE_NETGROUP
+#define HAVE_NETGROUP 0
+#endif
 
 #if HAVE_ALIASES
 #include <aliases.h>
@@ -71,7 +74,9 @@ static const int rpc_align_to = 17;
 #endif
 static const int proto_align_to = 23;
 static const int initgroup_align_to = 23;
+#if HAVE_NETGROUP
 static const int netgroup_align_to = 23;
+#endif
 
 #define DST_LEN 256
 static const size_t MAX_GROUP_CNT = 256;
@@ -551,6 +556,7 @@ static int get_initgroups(const char **keys, int key_cnt)
         return RES_OK;
 }
 
+#if HAVE_NETGROUP
 static void print_getent(const char *host, const char *user, const char *domain)
 {
         if (host == NULL)
@@ -599,6 +605,7 @@ static int get_netgroup(const char **keys, int key_cnt)
 
         return RES_OK;
 }
+#endif
 
 static int get_hosts(const char **keys, int key_cnt)
 {
@@ -659,7 +666,9 @@ GET_SIMPLE(shadow, getspnam, spwd)
 
 NO_ENUM_ALL_FOR(ethers)
 NO_ENUM_ALL_FOR(initgroups)
+#if HAVE_NETGROUP
 NO_ENUM_ALL_FOR(netgroup)
+#endif
 
 static const getconf_database_config_t databases[] = {
         DATABASE_CONF_HOSTS(ahosts),
@@ -675,7 +684,9 @@ static const getconf_database_config_t databases[] = {
         DATABASE_CONF(gshadow),
 #endif
         DATABASE_CONF(initgroups),
+#if HAVE_NETGROUP
         DATABASE_CONF(netgroup),
+#endif
         DATABASE_CONF(networks),
         DATABASE_CONF(password),
         DATABASE_CONF(protocols),
