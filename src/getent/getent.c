@@ -93,16 +93,13 @@ enum {
 /* From bits/socket_type.h */
 static const char *socktypes[] = {
         "",
-        "STREAM ",     /* 1 */
-        "DGRAM  ",     /* 2 */
-        "RAW  ",       /* 3 */
-        "RDM  ",       /* 4 */
-        "SEQPACKET  ", /* 5 */
-        "DCCP  ",      /* 6 */
-        "",            /* 7 */
-        "",            /* 8 */
-        "",            /* 9 */
-        "PACKET ",     /* 10 */
+        "STREAM",
+        "DGRAM",
+        "RAW",
+        "RDM",
+        "SEQPACKET",
+        "DCCP",
+        [9] = "PACKET"
 };
 
 static const size_t socktype_size = sizeof(socktypes) / sizeof (const char *);
@@ -224,7 +221,7 @@ static void print_sockaddr(struct sockaddr *addr, int family, int align_to, int 
         }
         (void)getnameinfo(addr, family == AF_INET ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), host, NI_MAXHOST, NULL, 0, 0);
         host[NI_MAXHOST - 1] = 0;
-        printf("%s\n", host);
+        printf(" %s\n", host);
 }
 
 static void print_single_host_info(const char *key, int host_type)
@@ -613,7 +610,7 @@ static int get_ahostsv4(const char **keys, int key_cnt)
 
 static int get_ahostsv6(const char **keys, int key_cnt)
 {
-        return _get_hosts(keys, key_cnt, HOSTS_AHOST_V4);
+        return _get_hosts(keys, key_cnt, HOSTS_AHOST_V6);
 }
 
 static int no_enum(const char *db)
