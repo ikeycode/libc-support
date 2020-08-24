@@ -50,6 +50,9 @@
 #ifndef HAVE_GSHADOW
 #define HAVE_GSHADOW 0
 #endif
+#ifndef HAVE_RPC
+#define HAVE_RPC 0
+#endif
 
 #if HAVE_ALIASES
 #include <aliases.h>
@@ -63,7 +66,9 @@ static const int addr_align_to = 16;
 static const int alias_align_to = 16;
 #endif
 static const int network_align_to = 23;
+#if HAVE_RPC
 static const int rpc_align_to = 17;
+#endif
 static const int proto_align_to = 23;
 static const int initgroup_align_to = 23;
 static const int netgroup_align_to = 23;
@@ -447,6 +452,7 @@ static int get_networks(const char **keys, int key_cnt)
         return RES_OK;
 }
 
+#if HAVE_RPC
 static void print_rpcent_info(struct rpcent *rpc)
 {
         char **alias = NULL;
@@ -463,6 +469,7 @@ static void print_rpcent_info(struct rpcent *rpc)
         }
         printf("\n");
 }
+#endif
 
 static void print_protoent_info(struct protoent *ent)
 {
@@ -631,7 +638,9 @@ ENUM_ALL(hosts, hostent, 1, hostent)
 ENUM_ALL(networks, netent, 1, netent)
 ENUM_ALL(password, pwent, , passwd)
 ENUM_ALL(protocols, protoent, 1, protoent)
+#if HAVE_RPC
 ENUM_ALL(rpc, rpcent, 1, rpcent)
+#endif
 ENUM_ALL(shadow, spent, , spwd)
 
 #if HAVE_ALIASES
@@ -643,7 +652,9 @@ GET_SIMPLE(gshadow, getsgnam, sgrp)
 #endif
 GET_SIMPLE(password, getpwnam, passwd)
 GET_NUMERIC(protocols, getprotobyname, getprotobynumber, protoent)
+#if HAVE_RPC
 GET_NUMERIC(rpc, getrpcbyname, getrpcbynumber, rpcent)
+#endif
 GET_SIMPLE(shadow, getspnam, spwd)
 
 NO_ENUM_ALL_FOR(ethers)
@@ -668,7 +679,9 @@ static const getconf_database_config_t databases[] = {
         DATABASE_CONF(networks),
         DATABASE_CONF(password),
         DATABASE_CONF(protocols),
+#if HAVE_RPC
         DATABASE_CONF(rpc),
+#endif
         DATABASE_CONF(services),
         DATABASE_CONF(shadow),
 };
