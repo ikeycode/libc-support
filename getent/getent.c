@@ -45,6 +45,7 @@ static const int network_align_to = 23;
 static const int rpc_align_to = 17;
 static const int proto_align_to = 23;
 static const int initgroup_align_to = 23;
+static const int netgroup_align_to = 23;
 
 #define DST_LEN 256
 static const size_t MAX_GROUP_CNT = 256;
@@ -635,6 +636,55 @@ static int get_initgroups(const char **keys, int key_cnt)
         return RES_OK;
 }
 
+static void print_getent(const char *host, const char *user, const char *domain)
+{
+        if (host == NULL)
+                return;
+        printf("(%s,%s,%s)", host,
+                user != NULL ? user : "",
+                domain != NULL ? domain : "");
+}
+
+static int get_netgroup(const char **keys, int key_cnt)
+{
+        if (keys == NULL)
+                return RES_KEY_NOT_FOUND;
+
+        if (key_cnt == 1) {
+                char *host = NULL;
+                char *user = NULL;
+                char *domain = NULL;
+                int first = 1;
+
+                setnetgrent(*keys);
+                do {
+                        if (getnetgrent(&host, &user, &domain) == 0)
+                                break;
+                        if (first == 1) {
+                                int cnt;
+
+                                cnt = printf("%s ", *keys);
+                                print_align_to(cnt, netgroup_align_to);
+                                first = 0;
+                        } else
+                                printf(" ");
+                        print_getent(host, user, domain);
+                } while (host != NULL);
+                if (first != 1)
+                        printf("\n");
+        } else if (key_cnt >= 4) {
+                int res = innetgr(keys[0], keys[1], keys[2], keys[3]);
+                int cnt = printf("%s ", *keys);
+
+                print_align_to(cnt, netgroup_align_to);
+                print_getent(keys[1], keys[2], keys[3]);
+                printf(" = %d\n", res);
+        } else
+                return RES_KEY_NOT_FOUND;
+
+        return RES_OK;
+}
+
 static int get_hosts(const char **keys, int key_cnt)
 {
         return _get_hosts(keys, key_cnt, HOSTS_HOST);
@@ -680,11 +730,8 @@ static int get_ ## X ## _all(void)\
 
 NO_ENUM_ALL_FOR(ethers)
 NO_ENUM_ALL_FOR(initgroups)
+NO_ENUM_ALL_FOR(netgroup)
 
-/*
- * Missing:
- *  netgroup
- */
 static const getconf_database_config_t databases[] = {
         DATABASE_CONF_HOSTS(ahosts),
         DATABASE_CONF_HOSTS(ahostsv4),
@@ -695,6 +742,7 @@ static const getconf_database_config_t databases[] = {
         DATABASE_CONF(group),
         DATABASE_CONF(gshadow),
         DATABASE_CONF(initgroups),
+        DATABASE_CONF(netgroup),
         DATABASE_CONF(networks),
         DATABASE_CONF(password),
         DATABASE_CONF(protocols),
