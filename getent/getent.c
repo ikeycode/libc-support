@@ -85,6 +85,18 @@ static const char *socktypes[] = {
 
 static const size_t socktype_size = sizeof(socktypes) / sizeof (const char *);
 
+typedef int (*get_func_t)(const char **keys, int key_cnt);
+typedef int (*get_all_func_t)(void);
+
+typedef struct getconf_database_config {
+    const char *name;
+    get_func_t get;
+    get_all_func_t get_all;
+} getconf_database_config_t;
+
+#define DATABASE_CONF(X) { #X, get_ ## X, get_ ## X ## _all }
+#define DATABASE_CONF_HOSTS(X) { #X, get_ ## X, get_hosts_all }
+
 static void err(const char *msg, ...)
 {
     va_list args;
@@ -188,7 +200,7 @@ static void print_host_info(const char *key, int host_type)
     freeaddrinfo(info);
 }
 
-static int get_hosts(const char **keys, int key_cnt, int host_type)
+static int _get_hosts(const char **keys, int key_cnt, int host_type)
 {
     if (keys == NULL)
         return RES_KEY_NOT_FOUND;
@@ -416,7 +428,7 @@ static void print_passwd_info(struct passwd *pwd)
     printf("\n");
 }
 
-static int get_passwd(const char **keys, int key_cnt)
+static int get_password(const char **keys, int key_cnt)
 {
     if (keys == NULL)
         return RES_KEY_NOT_FOUND;
@@ -432,7 +444,7 @@ static int get_passwd(const char **keys, int key_cnt)
     return RES_OK;
 }
 
-static int get_passwd_all(void)
+static int get_password_all(void)
 {
     struct passwd *pwd = NULL;
 
@@ -728,75 +740,73 @@ static int get_initgroups(const char **keys, int key_cnt)
     return RES_OK;
 }
 
+static int get_hosts(const char **keys, int key_cnt)
+{
+    return _get_hosts(keys, key_cnt, HOSTS_HOST);
+}
+
+static int get_ahosts(const char **keys, int key_cnt)
+{
+    return _get_hosts(keys, key_cnt, HOSTS_AHOST);
+}
+
+static int get_ahostsv4(const char **keys, int key_cnt)
+{
+    return _get_hosts(keys, key_cnt, HOSTS_AHOST_V4);
+}
+
+static int get_ahostsv6(const char **keys, int key_cnt)
+{
+    return _get_hosts(keys, key_cnt, HOSTS_AHOST_V4);
+}
+
+static int no_enum(const char *db)
+{
+    printf("Enumeration not supported on %s\n", db);
+    return RES_ENUMERATION_NOT_SUPPORTED;
+}
+#define NO_ENUM_ALL_FOR(X) \
+static int get_ ## X ## _all(void)\
+{\
+    return no_enum(#X);\
+}
+
+NO_ENUM_ALL_FOR(ethers)
+NO_ENUM_ALL_FOR(initgroups)
+
+/*
+ * Missing:
+ *  netgroup
+ */
+static const getconf_database_config_t databases[] = {
+    DATABASE_CONF_HOSTS(ahosts),
+    DATABASE_CONF_HOSTS(ahostsv4),
+    DATABASE_CONF_HOSTS(ahostsv6),
+    DATABASE_CONF_HOSTS(hosts),
+    DATABASE_CONF(aliases),
+    DATABASE_CONF(ethers),
+    DATABASE_CONF(group),
+    DATABASE_CONF(gshadow),
+    DATABASE_CONF(initgroups),
+    DATABASE_CONF(networks),
+    DATABASE_CONF(password),
+    DATABASE_CONF(protocols),
+    DATABASE_CONF(rpc),
+    DATABASE_CONF(services),
+    DATABASE_CONF(shadow),
+};
+static const size_t databases_size = sizeof(databases) / sizeof (getconf_database_config_t);
 
 static int read_database(const char *dbase, const char **keys, int key_cnt)
 {
-    /*
-     * Missing:
-     *  netgroup
-     */
-    if (strcmp("ahosts", dbase) == 0) {
+    size_t i = 0;
+
+    for (i = 0; i < databases_size; i++) {
+        if (strcmp(databases[i].name, dbase) != 0)
+            continue;
         if (keys != NULL)
-            return get_hosts(keys, key_cnt, HOSTS_AHOST);
-        return get_hosts_all();
-    } else if (strcmp("ahostsv4", dbase) == 0) {
-        if (keys != NULL)
-            return get_hosts(keys, key_cnt, HOSTS_AHOST_V4);
-        return get_hosts_all();
-    } else if (strcmp("ahostsv6", dbase) == 0) {
-        if (keys != NULL)
-            return get_hosts(keys, key_cnt, HOSTS_AHOST_V6);
-        return get_hosts_all();
-    } else if (strcmp("hosts", dbase) == 0) {
-        if (keys != NULL)
-            return get_hosts(keys, key_cnt, HOSTS_HOST);
-        return get_hosts_all();
-    } else if (strcmp("aliases", dbase) == 0) {
-        if (keys != NULL)
-            return get_aliases(keys, key_cnt);
-        return get_aliases_all();
-    } else if (strcmp("ethers", dbase) == 0) {
-        if (keys != NULL)
-            return get_ethers(keys, key_cnt);
-        printf("Enumeration not supported on ethers\n");
-        return RES_ENUMERATION_NOT_SUPPORTED;
-    } else if (strcmp("group", dbase) == 0) {
-        if (keys != NULL)
-            return get_group(keys, key_cnt);
-        return get_group_all();
-    } else if (strcmp("gshadow", dbase) == 0) {
-        if (keys != NULL)
-            return get_gshadow(keys, key_cnt);
-        return get_gshadow_all();
-    } else if (strcmp("initgroups", dbase) == 0) {
-        if (keys != NULL)
-            return get_initgroups(keys, key_cnt);
-        printf("Enumeration not supported on initgroups\n");
-        return RES_ENUMERATION_NOT_SUPPORTED;
-    } else if (strcmp("networks", dbase) == 0) {
-        if (keys != NULL)
-            return get_networks(keys, key_cnt);
-        return get_networks_all();
-    } else if (strcmp("passwd", dbase) == 0) {
-        if (keys != NULL)
-            return get_passwd(keys, key_cnt);
-        return get_passwd_all();
-    } else if (strcmp("protocols", dbase) == 0) {
-        if (keys != NULL)
-            return get_protocols(keys, key_cnt);
-        return get_protocols_all();
-    } else if (strcmp("rpc", dbase) == 0) {
-        if (keys != NULL)
-            return get_rpc(keys, key_cnt);
-        return get_rpc_all();
-    } else if (strcmp("services", dbase) == 0) {
-        if (keys != NULL)
-            return get_services(keys, key_cnt);
-        return get_services_all();
-    } else if (strcmp("shadow", dbase) == 0) {
-        if (keys != NULL)
-            return get_shadow(keys, key_cnt);
-        return get_shadow_all();
+            return databases[i].get(keys, key_cnt);
+        return databases[i].get_all();
     }
 
     err("Unknown database: %s\n", dbase);
