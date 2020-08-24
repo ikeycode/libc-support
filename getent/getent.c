@@ -22,10 +22,6 @@
  * SOFTWARE.
  */
 
-#ifdef S_SPLINT_S
-/* Hack for splint parse error caused by bits/thread-shared-types.h */
-#define _THREAD_SHARED_TYPES_H
-#endif
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdio.h>
@@ -93,11 +89,9 @@ static void err(const char *msg, ...)
 {
     va_list args;
 
-    /*@-nullpass@*/
     va_start(args, msg);
     (void)vfprintf(stderr, msg, args);
     va_end(args);
-    /*@=nullpass@*/
 
     exit(EXIT_FAILURE);
 }
@@ -130,9 +124,7 @@ static void print_addr(char *addr, int len, int align_to)
     int cnt = 0;
 
     while (len-- > 0) {
-        /*@+charint@*/
         cnt += printf("%s%hhu", first == 0 ? "." : "", (unsigned char)*addr);
-        /*@-charint@*/
         addr++;
         first = 0;
     }
@@ -148,14 +140,10 @@ static void print_sockaddr(struct sockaddr *addr, int family, int align_to, int 
 
     if (family == AF_INET) {
         struct sockaddr_in *sin = (struct sockaddr_in *)addr;
-        /*@-compdef@ @-mustfreefresh@ */
         cnt += printf("%s ", inet_ntop(AF_INET, (const void *)&sin->sin_addr, (char *)dst, DST_LEN));
-        /*@=compdef@ @=mustfreefresh@*/
     } else {
         struct sockaddr_in6 *sin = (struct sockaddr_in6 *)addr;
-        /*@-compdef@ @-mustfreefresh@*/
         cnt += printf("%s ", inet_ntop(AF_INET6, (const void *)&sin->sin6_addr, (char *)dst, DST_LEN));
-        /*@=compdef@ @=mustfreefresh@*/
     }
     print_align_to(cnt, align_to);
     if (sock_type > 0 && (size_t)sock_type < socktype_size)
@@ -164,15 +152,9 @@ static void print_sockaddr(struct sockaddr *addr, int family, int align_to, int 
         printf("\n");
         return;
     }
-    /*@-compdef@ @-type@ @-nullpass@ FIXME Missing alias names */
     (void)getnameinfo(addr, family == AF_INET ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), host, NI_MAXHOST, NULL, 0, 0);
-    /*@=compdef@ @=type@ @=nullpass@*/
-    /*@-type@*/
     host[NI_MAXHOST- 1] = 0;
-    /*@=type@*/
-    /*@-compdef@ @-nullpass@ @-usedef@*/
     printf("%s\n", host);
-    /*@=compdef@ @=nullpass@ @=usedef@*/
 }
 
 static void print_host_info(const char *key, int host_type)
@@ -188,13 +170,9 @@ static void print_host_info(const char *key, int host_type)
     } else if (host_type == HOSTS_AHOST_V4) {
         hints.ai_family = AF_INET;
     }
-    /*@-nullpass@*/
     res = getaddrinfo(key, NULL, &hints, &info);
-    /*@=nullpass@*/
     if (res != 0 || info == NULL)
-    /*@-compdestroy@*/
         return;
-    /*@=compdestroy@*/
 
     if (host_type == HOSTS_AHOST || host_type == HOSTS_AHOST_V4 || host_type == HOSTS_AHOST_V6) {
         struct addrinfo *tmp = info;
@@ -208,11 +186,9 @@ static void print_host_info(const char *key, int host_type)
         print_sockaddr(info->ai_addr, info->ai_family, addr_align_to, 0, 1);
 
     freeaddrinfo(info);
-    /*@-compdestroy@*/
 }
-/*@=compdestroy@*/
 
-static int get_hosts(/*@null@*/ const char **keys, int key_cnt, int host_type)
+static int get_hosts(const char **keys, int key_cnt, int host_type)
 {
     if (keys == NULL)
         return RES_KEY_NOT_FOUND;
@@ -257,7 +233,7 @@ static void print_alias_info(struct aliasent *ent)
     printf("\n");
 }
 
-static int get_aliases(/*@null@*/ const char **keys, int key_cnt)
+static int get_aliases(const char **keys, int key_cnt)
 {
     if (keys == NULL)
         return RES_KEY_NOT_FOUND;
@@ -265,12 +241,10 @@ static int get_aliases(/*@null@*/ const char **keys, int key_cnt)
     for (; key_cnt-- > 0; keys++) {
         struct aliasent *ent = NULL;
 
-        /*@-mustfreefresh@*/
         ent = getaliasbyname(*keys);
         if (ent != NULL)
             print_alias_info(ent);
     }
-    /*@=mustfreefresh@*/
 
     return RES_OK;
 }
@@ -287,7 +261,7 @@ static int get_aliases_all(void)
     return RES_OK;
 }
 
-static int get_ethers(/*@null@*/ const char **keys, int key_cnt)
+static int get_ethers(const char **keys, int key_cnt)
 {
     struct ether_addr *addr = NULL;
     struct ether_addr addr_dst;
@@ -301,31 +275,22 @@ static int get_ethers(/*@null@*/ const char **keys, int key_cnt)
         addr = ether_aton(*keys);
         if (addr != NULL) {
             char *addr_str = ether_ntoa(addr);
-            /*@-mustfreefresh@*/
             if (addr_str == NULL)
                 return RES_KEY_NOT_FOUND;
             printf("%s ", addr_str);
         } else {
-            /*@=mustfreefresh@*/
             memset(&addr_dst, 0, sizeof(struct ether_addr));
             res = ether_hostton(*keys, &addr_dst);
 
             if (res != 0)
                 return RES_KEY_NOT_FOUND;
-            /*@-mustfreefresh@*/
             printf("%s ", ether_ntoa(&addr_dst));
-            /*@=mustfreefresh@*/
-            /*@-branchstate@*/
             addr = &addr_dst;
         }
-        /*@=branchstate@*/
-        /*@-compdef@*/
         res = ether_ntohost(hostname, addr);
         if (res != 0)
             return RES_KEY_NOT_FOUND;
-        /*@-usedef@*/
         printf("%s\n", hostname);
-        /*@=compdef@ @=usedef@*/
     }
 
     return RES_OK;
@@ -357,7 +322,7 @@ static void print_shadow_info(struct spwd *pwd)
     printf("\n");
 }
 
-static int get_shadow(/*@null@*/ const char **keys, int key_cnt)
+static int get_shadow(const char **keys, int key_cnt)
 {
     if (keys == NULL)
         return RES_KEY_NOT_FOUND;
@@ -365,12 +330,10 @@ static int get_shadow(/*@null@*/ const char **keys, int key_cnt)
     for (; key_cnt-- > 0; keys++) {
         struct spwd *pwd = NULL;
 
-        /*@-mustfreefresh@*/
         pwd = getspnam(*keys);
         if (pwd != NULL)
             print_shadow_info(pwd);
     }
-    /*@=mustfreefresh@*/
 
     return RES_OK;
 }
@@ -407,7 +370,7 @@ static void print_gshadow_info(struct sgrp *pwd)
     printf("\n");
 }
 
-static int get_gshadow(/*@null@*/ const char **keys, int key_cnt)
+static int get_gshadow(const char **keys, int key_cnt)
 {
     if (keys == NULL)
         return RES_KEY_NOT_FOUND;
@@ -415,12 +378,10 @@ static int get_gshadow(/*@null@*/ const char **keys, int key_cnt)
     for (; key_cnt-- > 0; keys++) {
         struct sgrp *pwd = NULL;
 
-        /*@-mustfreefresh@*/
         pwd = getsgnam(*keys);
         if (pwd != NULL)
             print_gshadow_info(pwd);
     }
-    /*@=mustfreefresh@*/
 
     return RES_OK;
 }
@@ -455,7 +416,7 @@ static void print_passwd_info(struct passwd *pwd)
     printf("\n");
 }
 
-static int get_passwd(/*@null@*/ const char **keys, int key_cnt)
+static int get_passwd(const char **keys, int key_cnt)
 {
     if (keys == NULL)
         return RES_KEY_NOT_FOUND;
@@ -463,12 +424,10 @@ static int get_passwd(/*@null@*/ const char **keys, int key_cnt)
     for (; key_cnt-- > 0; keys++) {
         struct passwd *pwd = NULL;
 
-        /*@-mustfreefresh@*/
         pwd = getpwnam(*keys);
         if (pwd != NULL)
             print_passwd_info(pwd);
     }
-    /*@=mustfreefresh@*/
 
     return RES_OK;
 }
@@ -513,7 +472,7 @@ static int is_numeric(const char *v)
     return 1;
 }
 
-static int get_group(/*@null@*/ const char **keys, int key_cnt)
+static int get_group(const char **keys, int key_cnt)
 {
     if (keys == NULL)
         return 1;
@@ -523,17 +482,13 @@ static int get_group(/*@null@*/ const char **keys, int key_cnt)
 
         if (*keys == NULL)
             continue;
-        /*@-mustfreefresh@*/
         if (is_numeric(*keys) == 1)
-            /*@-type@*/
             grp = getgrgid(atoi(*keys));
-            /*@=type@*/
         else
             grp = getgrnam(*keys);
         if (grp != NULL)
             print_group_info(grp);
     }
-    /*@=mustfreefresh@*/
 
     return RES_OK;
 }
@@ -557,12 +512,10 @@ static void print_network_info(struct netent *net)
 
     cnt += printf("%s ", net->n_name);
     print_align_to(cnt, network_align_to);
-    /*@+charint@*/
     printf("%hhu.%hhu.%hhu.%hhu\n", tmp[3], tmp[2], tmp[1], tmp[0]);
-    /*@=charint@*/
 }
 
-static int get_networks(/*@null@*/ const char **keys, int key_cnt)
+static int get_networks(const char **keys, int key_cnt)
 {
     if (keys == NULL)
         return RES_KEY_NOT_FOUND;
@@ -576,20 +529,14 @@ static int get_networks(/*@null@*/ const char **keys, int key_cnt)
             uint32_t addr = 0;
 
             /* TODO Find better way to get uint32_t network address */
-            /*@-compdef@*/
             if (inet_pton(AF_INET, *keys, dst) != 1)
                 return RES_KEY_NOT_FOUND;
-            /*@=compdef@*/
-            /*@-usedef@*/
             addr = htonl(*(uint32_t*)dst);
-            /*@=usedef@*/
             net = getnetbyaddr(addr, AF_INET);
         }
-        /*@-mustfreefresh@*/
         if (net != NULL)
             print_network_info(net);
     }
-    /*@=mustfreefresh@*/
 
     return RES_OK;
 }
@@ -623,7 +570,7 @@ static void print_rpc_info(struct rpcent *rpc)
     printf("\n");
 }
 
-static int get_rpc(/*@null@*/ const char **keys, int key_cnt)
+static int get_rpc(const char **keys, int key_cnt)
 {
     if (keys == NULL)
         return RES_KEY_NOT_FOUND;
@@ -637,11 +584,9 @@ static int get_rpc(/*@null@*/ const char **keys, int key_cnt)
             rpc = getrpcbynumber(atoi(*keys));
         else
             rpc = getrpcbyname(*keys);
-        /*@-mustfreefresh@*/
         if (rpc != NULL)
             print_rpc_info(rpc);
     }
-    /*@=mustfreefresh@*/
 
     return RES_OK;
 }
@@ -672,7 +617,7 @@ static void print_protocol_info(struct protoent *ent)
     printf("\n");
 }
 
-static int get_protocols(/*@null@*/ const char **keys, int key_cnt)
+static int get_protocols(const char **keys, int key_cnt)
 {
     if (keys == NULL)
         return RES_KEY_NOT_FOUND;
@@ -686,11 +631,9 @@ static int get_protocols(/*@null@*/ const char **keys, int key_cnt)
             ent = getprotobynumber(atoi(*keys));
         else
             ent = getprotobyname(*keys);
-        /*@-mustfreefresh@*/
         if (ent != NULL)
             print_protocol_info(ent);
     }
-    /*@=mustfreefresh@*/
 
     return RES_OK;
 }
@@ -714,16 +657,14 @@ static void print_service_info(struct servent *ent)
 
     cnt = printf("%s ", ent->s_name);
     print_align_to(cnt, proto_align_to);
-    /*@+matchanyintegral@*/
     printf("%hu/%s", ntohs((uint16_t)ent->s_port), ent->s_proto);
-    /*@=matchanyintegral@*/
     for (alias = ent->s_aliases; alias != NULL && *alias != NULL; alias++) {
         printf(" %s", *alias);
     }
     printf("\n");
 }
 
-static int get_services(/*@null@*/ const char **keys, int key_cnt)
+static int get_services(const char **keys, int key_cnt)
 {
     if (keys == NULL)
         return RES_KEY_NOT_FOUND;
@@ -734,18 +675,12 @@ static int get_services(/*@null@*/ const char **keys, int key_cnt)
         if (*keys == NULL)
             continue;
         if (is_numeric(*keys) == 1)
-            /*@+matchanyintegral@ @-nullpass@*/
             ent = getservbyport(htons((uint16_t)atoi(*keys)), NULL);
-            /*@=matchanyintegral@ @=nullpass@*/
         else
-            /*@-nullpass@*/
             ent = getservbyname(*keys, NULL);
-            /*@=nullpass@*/
-        /*@-mustfreefresh@*/
         if (ent != NULL)
             print_service_info(ent);
     }
-    /*@=mustfreefresh@*/
 
     return RES_OK;
 }
@@ -762,7 +697,7 @@ static int get_services_all(void)
     return RES_OK;
 }
 
-static int get_initgroups(/*@null@*/ const char **keys, int key_cnt)
+static int get_initgroups(const char **keys, int key_cnt)
 {
     if (keys == NULL)
         return RES_KEY_NOT_FOUND;
@@ -776,19 +711,15 @@ static int get_initgroups(/*@null@*/ const char **keys, int key_cnt)
         if (groups == NULL)
             err("Out of memory");
 
-        /*@-type@ @-nullpass@*/
         if (getgrouplist(*keys, 0, groups, &group_cnt) == -1) {
-            /*@=type@  @=nullpass@*/
             free(groups);
             return RES_KEY_NOT_FOUND;
         }
         cnt += printf("%s ", *keys);
         print_align_to(cnt, initgroup_align_to);
         for (i = 0; i < group_cnt; i++) {
-            /*@+matchanyintegral@*/
             if (groups != NULL && groups[i] > 0)
                 printf("%u ", groups[i]);
-            /*@=matchanyintegral@*/
         }
         printf("\n");
         free(groups);
@@ -798,7 +729,7 @@ static int get_initgroups(/*@null@*/ const char **keys, int key_cnt)
 }
 
 
-static int read_database(const char *dbase, /*@null@*/ const char **keys, int key_cnt)
+static int read_database(const char *dbase, const char **keys, int key_cnt)
 {
     /*
      * Missing:
@@ -901,7 +832,5 @@ int main(int argc, char **argv)
     if (dbase == NULL)
         usage(argv[0], HELP_SHORT);
 
-    /*@-nullpass@*/
     return read_database(dbase, keys, argc - index);
-    /*@=nullpass@*/
 }

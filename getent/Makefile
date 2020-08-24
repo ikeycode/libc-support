@@ -7,7 +7,7 @@ getent: getent.o
 
 getent.o: getent.c
 
-check: scan splint sparse
+check: scan sparse
 
 scan:
 	@$(SCAN_BUILD) make
