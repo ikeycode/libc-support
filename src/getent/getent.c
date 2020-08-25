@@ -24,23 +24,23 @@
 
 #define _GNU_SOURCE
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <stdbool.h>
-#include <stdio.h>
+#include <arpa/inet.h>
+#include <getopt.h>
+#include <grp.h>
+#include <locale.h>
+#include <netdb.h>
+#include <netinet/ether.h>
+#include <pwd.h>
+#include <shadow.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <netinet/ether.h>
-#include <shadow.h>
-#include <grp.h>
-#include <pwd.h>
-#include <getopt.h>
-#include <locale.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 #include "config.h"
 
@@ -81,37 +81,28 @@ static const int netgroup_align_to = 23;
 #define DST_LEN 256
 static const size_t MAX_GROUP_CNT = 256;
 
-enum {
-        HELP_SHORT,
-        HELP_FULL
+enum { HELP_SHORT, HELP_FULL };
+
+enum { HOSTS_HOST,
+       HOSTS_AHOST,
+       HOSTS_AHOST_V4,
+       HOSTS_AHOST_V6,
 };
 
-enum {
-        HOSTS_HOST,
-        HOSTS_AHOST,
-        HOSTS_AHOST_V4,
-        HOSTS_AHOST_V6,
-};
-
-enum {
-        RES_OK = 0,
-        RES_MISSING_ARG_OR_INVALID_DATABASE = 1,
-        RES_KEY_NOT_FOUND = 2,
-        RES_ENUMERATION_NOT_SUPPORTED = 3,
+enum { RES_OK = 0,
+       RES_MISSING_ARG_OR_INVALID_DATABASE = 1,
+       RES_KEY_NOT_FOUND = 2,
+       RES_ENUMERATION_NOT_SUPPORTED = 3,
 };
 
 /* From bits/socket_type.h */
 static const char *socktypes[] = {
-        [SOCK_STREAM]    = "STREAM",
-        [SOCK_DGRAM]     = "DGRAM",
-        [SOCK_RAW]       = "RAW",
-        [SOCK_RDM]       = "RDM",
-        [SOCK_SEQPACKET] = "SEQPACKET",
-        [SOCK_DCCP]      = "DCCP",
-        [SOCK_PACKET]    = "PACKET"
+        [SOCK_STREAM] = "STREAM", [SOCK_DGRAM] = "DGRAM",         [SOCK_RAW] = "RAW",
+        [SOCK_RDM] = "RDM",       [SOCK_SEQPACKET] = "SEQPACKET", [SOCK_DCCP] = "DCCP",
+        [SOCK_PACKET] = "PACKET"
 };
 
-static const size_t socktype_size = sizeof(socktypes) / sizeof (const char *);
+static const size_t socktype_size = sizeof(socktypes) / sizeof(const char *);
 
 typedef int (*get_func_t)(const char **keys, int key_cnt);
 typedef int (*enum_func_t)(void);
@@ -122,59 +113,66 @@ typedef struct getconf_database_config {
         enum_func_t enum_all;
 } getconf_database_config_t;
 
-#define DATABASE_CONF(X) { #X, get_ ## X, enum_ ## X ## _all }
-#define DATABASE_CONF_HOSTS(X) { #X, get_ ## X, enum_hosts_all }
+#define DATABASE_CONF(X)                                                                           \
+        {                                                                                          \
+#X, get_##X, enum_##X##_all                                                        \
+        }
+#define DATABASE_CONF_HOSTS(X)                                                                     \
+        {                                                                                          \
+#X, get_##X, enum_hosts_all                                                        \
+        }
 
-#define ENUM_ALL(X, base, initparm, type)\
-static int enum_ ## X ## _all(void)\
-{\
-        struct type *ent = NULL;\
-        set ## base(initparm);\
-        while ((ent = get ## base()) != NULL)\
-                print_ ## type ## _info(ent);\
-        end ## base();\
-        return RES_OK;\
-}
+#define ENUM_ALL(X, base, initparm, type)                                                          \
+        static int enum_##X##_all(void)                                                            \
+        {                                                                                          \
+                struct type *ent = NULL;                                                           \
+                set##base(initparm);                                                               \
+                while ((ent = get##base()) != NULL)                                                \
+                        print_##type##_info(ent);                                                  \
+                end##base();                                                                       \
+                return RES_OK;                                                                     \
+        }
 
-#define GET_SIMPLE(X, getfunc, type)\
-static int get_ ## X(const char **keys, int key_cnt)\
-{\
-        if (keys == NULL)\
-                return RES_KEY_NOT_FOUND;\
-        for (; key_cnt-- > 0; keys++) {\
-                struct type *ent = NULL;\
-                ent = getfunc(*keys);\
-                if (ent != NULL)\
-                        print_ ## type ## _info(ent);\
-        }\
-        return RES_OK;\
-}
+#define GET_SIMPLE(X, getfunc, type)                                                               \
+        static int get_##X(const char **keys, int key_cnt)                                         \
+        {                                                                                          \
+                if (keys == NULL)                                                                  \
+                        return RES_KEY_NOT_FOUND;                                                  \
+                for (; key_cnt-- > 0; keys++) {                                                    \
+                        struct type *ent = NULL;                                                   \
+                        ent = getfunc(*keys);                                                      \
+                        if (ent != NULL)                                                           \
+                                print_##type##_info(ent);                                          \
+                }                                                                                  \
+                return RES_OK;                                                                     \
+        }
 
-#define GET_NUMERIC_CAST(X, getfunc, getnumericfunc, type, numcast)\
-static int get_ ## X(const char **keys, int key_cnt)\
-{\
-        if (keys == NULL)\
-                return RES_KEY_NOT_FOUND;\
-        for (; key_cnt-- > 0; keys++) {\
-                struct type *ent = NULL;\
-                if (*keys == NULL)\
-                        continue;\
-                if (is_numeric(*keys) == 1)\
-                        ent = getnumericfunc((numcast)atoi(*keys));\
-                else\
-                        ent = getfunc(*keys);\
-                if (ent != NULL)\
-                        print_ ## type ## _info(ent);\
-        }\
-        return RES_OK;\
-}
-#define GET_NUMERIC(X, getfunc, getnumericfunc, type) GET_NUMERIC_CAST(X, getfunc, getnumericfunc, type, int)
+#define GET_NUMERIC_CAST(X, getfunc, getnumericfunc, type, numcast)                                \
+        static int get_##X(const char **keys, int key_cnt)                                         \
+        {                                                                                          \
+                if (keys == NULL)                                                                  \
+                        return RES_KEY_NOT_FOUND;                                                  \
+                for (; key_cnt-- > 0; keys++) {                                                    \
+                        struct type *ent = NULL;                                                   \
+                        if (*keys == NULL)                                                         \
+                                continue;                                                          \
+                        if (is_numeric(*keys) == 1)                                                \
+                                ent = getnumericfunc((numcast)atoi(*keys));                        \
+                        else                                                                       \
+                                ent = getfunc(*keys);                                              \
+                        if (ent != NULL)                                                           \
+                                print_##type##_info(ent);                                          \
+                }                                                                                  \
+                return RES_OK;                                                                     \
+        }
+#define GET_NUMERIC(X, getfunc, getnumericfunc, type)                                              \
+        GET_NUMERIC_CAST(X, getfunc, getnumericfunc, type, int)
 
-#define NO_ENUM_ALL_FOR(X)\
-static int enum_ ## X ## _all(void)\
-{\
-        return no_enum(#X);\
-}
+#define NO_ENUM_ALL_FOR(X)                                                                         \
+        static int enum_##X##_all(void)                                                            \
+        {                                                                                          \
+                return no_enum(#X);                                                                \
+        }
 
 static void err(const char *msg, ...)
 {
@@ -208,7 +206,8 @@ static void print_addr(char *addr, int len, int align_to)
         print_align_to(cnt, align_to);
 }
 
-static void print_sockaddr(struct sockaddr *addr, int family, int align_to, int sock_type, int print_host)
+static void print_sockaddr(struct sockaddr *addr, int family, int align_to, int sock_type,
+                           int print_host)
 {
         char dst[DST_LEN];
         char host[NI_MAXHOST];
@@ -216,10 +215,16 @@ static void print_sockaddr(struct sockaddr *addr, int family, int align_to, int 
 
         if (family == AF_INET) {
                 struct sockaddr_in *sin = (struct sockaddr_in *)addr;
-                cnt += printf("%s ", inet_ntop(AF_INET, (const void *)&sin->sin_addr, (char *)dst, DST_LEN));
+                cnt +=
+                    printf("%s ",
+                           inet_ntop(AF_INET, (const void *)&sin->sin_addr, (char *)dst, DST_LEN));
         } else {
                 struct sockaddr_in6 *sin = (struct sockaddr_in6 *)addr;
-                cnt += printf("%s ", inet_ntop(AF_INET6, (const void *)&sin->sin6_addr, (char *)dst, DST_LEN));
+                cnt += printf("%s ",
+                              inet_ntop(AF_INET6,
+                                        (const void *)&sin->sin6_addr,
+                                        (char *)dst,
+                                        DST_LEN));
         }
         print_align_to(cnt, align_to);
         if (sock_type > 0 && (size_t)sock_type < socktype_size)
@@ -228,7 +233,14 @@ static void print_sockaddr(struct sockaddr *addr, int family, int align_to, int 
                 printf("\n");
                 return;
         }
-        (void)getnameinfo(addr, family == AF_INET ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), host, NI_MAXHOST, NULL, 0, 0);
+        (void)getnameinfo(addr,
+                          family == AF_INET ? sizeof(struct sockaddr_in)
+                                            : sizeof(struct sockaddr_in6),
+                          host,
+                          NI_MAXHOST,
+                          NULL,
+                          0,
+                          0);
         host[NI_MAXHOST - 1] = 0;
         printf(" %s\n", host);
 }
@@ -250,12 +262,17 @@ static void print_single_host_info(const char *key, int host_type)
         if (res != 0 || info == NULL)
                 return;
 
-        if (host_type == HOSTS_AHOST || host_type == HOSTS_AHOST_V4 || host_type == HOSTS_AHOST_V6) {
+        if (host_type == HOSTS_AHOST || host_type == HOSTS_AHOST_V4 ||
+            host_type == HOSTS_AHOST_V6) {
                 struct addrinfo *tmp = NULL;
                 int print_host = 1;
 
                 for (tmp = info; tmp != NULL; tmp = tmp->ai_next) {
-                        print_sockaddr(tmp->ai_addr, tmp->ai_family, addr_align_to, tmp->ai_socktype, print_host);
+                        print_sockaddr(tmp->ai_addr,
+                                       tmp->ai_family,
+                                       addr_align_to,
+                                       tmp->ai_socktype,
+                                       print_host);
                         print_host = 0;
                 }
         } else
@@ -422,7 +439,7 @@ static int is_numeric(const char *v)
 
 static void print_netent_info(struct netent *net)
 {
-        unsigned char *tmp = (unsigned char*)&net->n_net;
+        unsigned char *tmp = (unsigned char *)&net->n_net;
         int cnt = 0;
 
         cnt += printf("%s ", net->n_name);
@@ -446,7 +463,7 @@ static int get_networks(const char **keys, int key_cnt)
                         /* TODO Find better way to get uint32_t network address */
                         if (inet_pton(AF_INET, *keys, dst) != 1)
                                 return RES_KEY_NOT_FOUND;
-                        addr = htonl(*(uint32_t*)dst);
+                        addr = htonl(*(uint32_t *)dst);
                         net = getnetbyaddr(addr, AF_INET);
                 }
                 if (net != NULL)
@@ -560,9 +577,7 @@ static void print_getent(const char *host, const char *user, const char *domain)
 {
         if (host == NULL)
                 return;
-        printf("(%s,%s,%s)", host,
-                user != NULL ? user : "",
-                domain != NULL ? domain : "");
+        printf("(%s,%s,%s)", host, user != NULL ? user : "", domain != NULL ? domain : "");
 }
 
 static int get_netgroup(const char **keys, int key_cnt)
@@ -633,7 +648,7 @@ static int no_enum(const char *db)
 }
 
 #if HAVE_ALIASES
-ENUM_ALL(aliases, aliasent, ,aliasent)
+ENUM_ALL(aliases, aliasent, , aliasent)
 #endif
 ENUM_ALL(services, servent, 1, servent)
 ENUM_ALL(group, grent, , group)
@@ -670,15 +685,12 @@ NO_ENUM_ALL_FOR(netgroup)
 #endif
 
 static const getconf_database_config_t databases[] = {
-        DATABASE_CONF_HOSTS(ahosts),
-        DATABASE_CONF_HOSTS(ahostsv4),
-        DATABASE_CONF_HOSTS(ahostsv6),
+        DATABASE_CONF_HOSTS(ahosts), DATABASE_CONF_HOSTS(ahostsv4), DATABASE_CONF_HOSTS(ahostsv6),
         DATABASE_CONF_HOSTS(hosts),
 #if HAVE_ALIASES
         DATABASE_CONF(aliases),
 #endif
-        DATABASE_CONF(ethers),
-        DATABASE_CONF(group),
+        DATABASE_CONF(ethers),       DATABASE_CONF(group),
 #if HAVE_GSHADOW
         DATABASE_CONF(gshadow),
 #endif
@@ -686,16 +698,13 @@ static const getconf_database_config_t databases[] = {
 #if HAVE_NETGROUP
         DATABASE_CONF(netgroup),
 #endif
-        DATABASE_CONF(networks),
-        DATABASE_CONF(password),
-        DATABASE_CONF(protocols),
+        DATABASE_CONF(networks),     DATABASE_CONF(password),       DATABASE_CONF(protocols),
 #if HAVE_RPC
         DATABASE_CONF(rpc),
 #endif
-        DATABASE_CONF(services),
-        DATABASE_CONF(shadow),
+        DATABASE_CONF(services),     DATABASE_CONF(shadow),
 };
-static const size_t databases_size = sizeof(databases) / sizeof (getconf_database_config_t);
+static const size_t databases_size = sizeof(databases) / sizeof(getconf_database_config_t);
 
 static int read_database(const char *dbase, const char **keys, int key_cnt)
 {
@@ -813,7 +822,7 @@ int main(int argc, char **argv)
         dbase = *argv;
         --argc;
         if (argc > 0)
-                keys = (const char**)++argv;
+                keys = (const char **)++argv;
 
         if (dbase == NULL) {
                 printUsage(progname);
