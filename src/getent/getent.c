@@ -439,12 +439,13 @@ static int is_numeric(const char *v)
 
 static void print_netent_info(struct netent *net)
 {
-        unsigned char *tmp = (unsigned char *)&net->n_net;
+        struct in_addr addr;
         int cnt = 0;
 
         cnt += printf("%s ", net->n_name);
         print_align_to(cnt, network_align_to);
-        printf("%hhu.%hhu.%hhu.%hhu\n", tmp[3], tmp[2], tmp[1], tmp[0]);
+        addr.s_addr = htonl(net->n_net);
+        printf("%s\n", inet_ntoa(addr));
 }
 
 static int get_networks(const char **keys, int key_cnt)
@@ -457,14 +458,15 @@ static int get_networks(const char **keys, int key_cnt)
 
                 net = getnetbyname(*keys);
                 if (net == NULL) {
-                        char dst[sizeof(uint32_t)];
-                        uint32_t addr = 0;
+                        struct addrinfo *info = NULL;
+                        struct sockaddr_in *sin = NULL;
+                        int res = 0;
 
-                        /* TODO Find better way to get uint32_t network address */
-                        if (inet_pton(AF_INET, *keys, dst) != 1)
+                        res = getaddrinfo(*keys, NULL, NULL, &info);
+                        if (res != 0 || info == NULL)
                                 return RES_KEY_NOT_FOUND;
-                        addr = htonl(*(uint32_t *)dst);
-                        net = getnetbyaddr(addr, AF_INET);
+                        sin = (struct sockaddr_in *)info->ai_addr;
+                        net = getnetbyaddr(ntohl(sin->sin_addr.s_addr), AF_INET);
                 }
                 if (net != NULL)
                         print_netent_info(net);
