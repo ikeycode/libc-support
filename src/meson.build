@@ -1,0 +1,3 @@
+subdir('getconf')
+subdir('getent')
+
