@@ -192,20 +192,6 @@ static void print_align_to(int cnt, int align_to)
                         break;
 }
 
-static void print_addr(char *addr, int len, int align_to)
-{
-        int first = 1;
-        int cnt = 0;
-
-        while (len-- > 0) {
-                cnt += printf("%s%hhu", first == 0 ? "." : "", (unsigned char)*addr);
-                addr++;
-                first = 0;
-        }
-        printf(" ");
-        print_align_to(cnt, align_to);
-}
-
 static void print_sockaddr(struct sockaddr *addr, int family, int align_to, int sock_type,
                            int print_host)
 {
@@ -295,9 +281,13 @@ static int _get_hosts(const char **keys, int key_cnt, int host_type)
 static void print_hostent_info(struct hostent *ent)
 {
         char **aliases = ent->h_aliases;
+        char dst[DST_LEN];
+        int cnt = 0;
 
-        print_addr(ent->h_addr_list[0], ent->h_length, addr_align_to);
-        printf("%s", ent->h_name);
+        inet_ntop(ent->h_addrtype, ent->h_addr_list[0], (char *)dst, DST_LEN);
+        cnt = printf("%s", dst);
+        print_align_to(cnt, addr_align_to);
+        printf(" %s", ent->h_name);
         while (aliases != NULL && *aliases != NULL) {
                 printf(" %s", *aliases);
                 aliases++;
