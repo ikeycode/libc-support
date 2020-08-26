@@ -3,6 +3,7 @@ ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = ${top_srcdir}/README.md \
 	     ${top_srcdir}/LICENSE   \
 	     ${top_srcdir}/src/getconf/getconf.inc
+	     ${top_srcdir}/src/getent/getent.inc
 
 NULL =
 CLEANFILES =
@@ -31,6 +32,20 @@ getconf_CFLAGS =	\
 	$(AM_CFLAGS)
 
 getent_SOURCES =			\
+	src/getent/db_hosts.c		\
+	src/getent/db_networks.c	\
+	src/getent/db_password.c	\
+	src/getent/db_aliases.c		\
+	src/getent/db_ethers.c		\
+	src/getent/db_protocols.c	\
+	src/getent/db_group.c		\
+	src/getent/db_shadow.c		\
+	src/getent/db_gshadow.c		\
+	src/getent/db_services.c	\
+	src/getent/db_rpc.c		\
+	src/getent/db_initgroups.c	\
+	src/getent/db_netgroup.c	\
+	src/getent/getent.h		\
 	src/getent/getent.c
 
 getent_CFLAGS =		\
