@@ -35,17 +35,9 @@ typedef struct getconf_database_config {
 
 #define DST_LEN 256
 
-#define EXT_DB(X)                                                                                  \
-        extern int get_##X(const char **keys, int key_cnt);                                        \
-        extern int enum_##X##_all(void);
-
 #define DATABASE_CONF(X)                                                                           \
         {                                                                                          \
                 .name = #X, .get = get_##X, .enum_all = enum_##X##_all                             \
-        }
-#define DATABASE_CONF_HOSTS(X)                                                                     \
-        {                                                                                          \
-                .name = #X, .get = get_##X, .enum_all = enum_hosts_all                             \
         }
 
 #define ENUM_ALL(X, base, initparm, type)                                                          \
@@ -113,7 +105,7 @@ static inline int no_enum(const char *db)
         return RES_ENUMERATION_NOT_SUPPORTED;
 }
 
-int is_numeric(const char *v);
-void err(const char *msg, ...);
+extern int is_numeric(const char *v);
+extern void err(const char *msg, ...);
 
 #endif
