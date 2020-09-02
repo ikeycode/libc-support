@@ -33,6 +33,7 @@
 #include <string.h>
 
 #include "config.h"
+#include "databases.h"
 #include "getent.h"
 
 enum { HELP_SHORT, HELP_FULL };
@@ -59,28 +60,6 @@ int is_numeric(const char *v)
 
         return 1;
 }
-
-EXT_DB(ahosts)
-EXT_DB(ahostsv4)
-EXT_DB(ahostsv6)
-EXT_DB(aliases)
-EXT_DB(ethers)
-EXT_DB(group)
-EXT_DB(gshadow)
-EXT_DB(hosts)
-EXT_DB(initgroups)
-EXT_DB(netgroup)
-EXT_DB(networks)
-EXT_DB(password)
-EXT_DB(protocols)
-EXT_DB(rpc)
-EXT_DB(services)
-EXT_DB(shadow)
-
-static const getconf_database_config_t databases[] = {
-#include "getent.inc"
-};
-static const size_t databases_size = sizeof(databases) / sizeof(getconf_database_config_t);
 
 static int read_database(const char *dbase, const char **keys, int key_cnt)
 {
@@ -120,7 +99,7 @@ static struct option prog_opts[] = {
  */
 static void printUsage(const char *progname)
 {
-        fprintf(stderr, "Usage: %s [-i] [-s config] database [key ...]\n", progname);
+        fprintf(stdout, "Usage: %s [-i] [-s config] database [key ...]\n", progname);
 }
 
 /**
@@ -131,9 +110,9 @@ static void printHelp(const char *progname)
         printUsage(progname);
 
         fputs("    -i, --no-idn                         Disable IDN encoding for lookups\n",
-              stderr);
+              stdout);
         fputs("    -s, --service=CONFIG                 Service configuration to be used\n",
-              stderr);
+              stdout);
         fputs("    -V, --version                        Display program version and quit\n",
               stdout);
 }

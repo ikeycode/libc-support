@@ -1,24 +1,24 @@
-        DATABASE_CONF_HOSTS(ahosts),
-        DATABASE_CONF_HOSTS(ahostsv4),
-        DATABASE_CONF_HOSTS(ahostsv6),
-        DATABASE_CONF_HOSTS(hosts),
-        DATABASE_CONF(networks),
-        DATABASE_CONF(password),
-        DATABASE_CONF(protocols),
-        DATABASE_CONF(ethers),
-        DATABASE_CONF(group),
-        DATABASE_CONF(services),
-        DATABASE_CONF(shadow),
+        DB(ahosts)
+        DB(ahostsv4)
+        DB(ahostsv6)
+        DB(hosts)
+        DB(networks)
+        DB(password)
+        DB(protocols)
+        DB(ethers)
+        DB(group)
+        DB(services)
+        DB(shadow)
 #if HAVE_ALIASES
-        DATABASE_CONF(aliases),
+        DB(aliases)
 #endif
 #if HAVE_GSHADOW
-        DATABASE_CONF(gshadow),
+        DB(gshadow)
 #endif
-        DATABASE_CONF(initgroups),
+        DB(initgroups)
 #if HAVE_NETGROUP
-        DATABASE_CONF(netgroup),
+        DB(netgroup)
 #endif
 #if HAVE_RPC
-        DATABASE_CONF(rpc),
+        DB(rpc)
 #endif

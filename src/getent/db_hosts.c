@@ -167,6 +167,9 @@ int get_ahostsv6(const char **keys, int key_cnt)
         return _get_hosts(keys, key_cnt, HOSTS_AHOST_V6);
 }
 
+ENUM_ALL(ahostsv4, hostent, 1, hostent)
+ENUM_ALL(ahostsv6, hostent, 1, hostent)
+ENUM_ALL(ahosts, hostent, 1, hostent)
 ENUM_ALL(hosts, hostent, 1, hostent)
 
 /*
