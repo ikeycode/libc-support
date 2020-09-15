@@ -37,11 +37,17 @@ static void print_netent_info(struct netent *net)
 {
         struct in_addr addr;
         int cnt = 0;
+        char **aliases = net->n_aliases;
 
         cnt += printf("%s ", net->n_name);
         print_align_to(cnt, network_align_to);
         addr.s_addr = htonl(net->n_net);
-        printf("%s\n", inet_ntoa(addr));
+        printf("%s", inet_ntoa(addr));
+        while (aliases != NULL && *aliases != NULL) {
+                printf(" %s", *aliases);
+                aliases++;
+        }
+        printf("\n");
 }
 
 int get_networks(const char **keys, int key_cnt)
